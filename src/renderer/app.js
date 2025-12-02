@@ -701,17 +701,12 @@ function showEditIncomingModal(grnId) {
 
     showModal('Edit Incoming Stock', modalBody);
 
-    const loadItemsPromise = currentData.items.length === 0 ? 
-        window.api.items.getActive().then(items => { currentData.items = items; }) : 
-        Promise.resolve();
-
-    loadItemsPromise.then(() => {
-        const itemOptions = currentData.items
-            .filter(i => i.Status === 'Active')
-            .map(i => ({ 
-                value: i.Item_ID.toString(), 
-                text: `${i.Item_Name} (${i.Unit_Measure})` 
-            }));
+    // Load all items for editing (not just active ones)
+    window.api.items.getAll().then(items => {
+        const itemOptions = items.map(i => ({ 
+            value: i.Item_ID.toString(), 
+            text: `${i.Item_Name} (${i.Unit_Measure})${i.Status === 'Inactive' ? ' [Inactive]' : ''}` 
+        }));
 
         const itemSelect = new SearchableSelect('itemIdContainer', itemOptions, 'Search items...');
         itemSelect.setValue(stock.Item_ID.toString());
@@ -907,17 +902,12 @@ function showEditDonationModal(donationId) {
 
     showModal('Edit Donation Record', modalBody);
 
-    const loadItemsPromise = currentData.items.length === 0 ? 
-        window.api.items.getActive().then(items => { currentData.items = items; }) : 
-        Promise.resolve();
-
-    loadItemsPromise.then(() => {
-        const itemOptions = currentData.items
-            .filter(i => i.Status === 'Active')
-            .map(i => ({ 
-                value: i.Item_ID.toString(), 
-                text: `${i.Item_Name} (${i.Unit_Measure})` 
-            }));
+    // Load all items for editing (not just active ones)
+    window.api.items.getAll().then(items => {
+        const itemOptions = items.map(i => ({ 
+            value: i.Item_ID.toString(), 
+            text: `${i.Item_Name} (${i.Unit_Measure})${i.Status === 'Inactive' ? ' [Inactive]' : ''}` 
+        }));
 
         const itemSelect = new SearchableSelect('donationItemIdContainer', itemOptions, 'Search items...');
         itemSelect.setValue(donation.Item_ID.toString());
@@ -1163,29 +1153,20 @@ function showEditOutgoingModal(dispatchId) {
 
     showModal('Edit Dispatch Record', modalBody);
 
-    const loadPromise = (currentData.items.length === 0 || currentData.centers.length === 0) ?
-        Promise.all([
-            window.api.items.getActive(),
-            window.api.centers.getActive()
-        ]).then(([items, centers]) => {
-            currentData.items = items;
-            currentData.centers = centers;
-        }) : Promise.resolve();
+    // Load all items and centers for editing (not just active ones)
+    Promise.all([
+        window.api.items.getAll(),
+        window.api.centers.getAll()
+    ]).then(([items, centers]) => {
+        const itemOptions = items.map(i => ({ 
+            value: i.Item_ID.toString(), 
+            text: `${i.Item_Name} (${i.Unit_Measure})${i.Status === 'Inactive' ? ' [Inactive]' : ''}` 
+        }));
 
-    loadPromise.then(() => {
-        const itemOptions = currentData.items
-            .filter(i => i.Status === 'Active')
-            .map(i => ({ 
-                value: i.Item_ID.toString(), 
-                text: `${i.Item_Name} (${i.Unit_Measure})` 
-            }));
-
-        const centerOptions = currentData.centers
-            .filter(c => c.Status === 'Active')
-            .map(c => ({ 
-                value: c.Center_ID.toString(), 
-                text: `${c.Center_Name} - ${c.District}` 
-            }));
+        const centerOptions = centers.map(c => ({ 
+            value: c.Center_ID.toString(), 
+            text: `${c.Center_Name} - ${c.District}${c.Status === 'Inactive' ? ' [Inactive]' : ''}` 
+        }));
 
         const itemSelect = new SearchableSelect('outgoingItemIdContainer', itemOptions, 'Search items...');
         itemSelect.setValue(stock.Item_ID.toString());
@@ -1402,10 +1383,13 @@ class SearchableSelect {
         return this.selectedValue;
     }
 
-    setValue(value, text) {
-        this.selectedValue = value;
-        this.selectedText = text;
-        this.input.value = text;
+    setValue(value) {
+        const option = this.options.find(opt => opt.value === value);
+        if (option) {
+            this.selectedValue = value;
+            this.selectedText = option.text;
+            this.input.value = option.text;
+        }
     }
 
     updateOptions(newOptions) {
