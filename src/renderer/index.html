@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMC Inventory Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <h2>DMC Inventory</h2>
+                <p>Disaster Management Center</p>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-page="dashboard">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </li>
+                <li class="nav-item" data-page="current-stock">
+                    <span class="icon">📦</span>
+                    <span>Current Stock</span>
+                </li>
+                <li class="nav-item" data-page="incoming">
+                    <span class="icon">📥</span>
+                    <span>Incoming Stock</span>
+                </li>
+                <li class="nav-item" data-page="donations">
+                    <span class="icon">🎁</span>
+                    <span>Donations</span>
+                </li>
+                <li class="nav-item" data-page="outgoing">
+                    <span class="icon">📤</span>
+                    <span>Dispatch/Outgoing</span>
+                </li>
+                <li class="nav-item" data-page="items">
+                    <span class="icon">🏷️</span>
+                    <span>Items Master</span>
+                </li>
+                <li class="nav-item" data-page="centers">
+                    <span class="icon">🏢</span>
+                    <span>Centers Master</span>
+                </li>
+                <li class="nav-item" data-page="settings">
+                    <span class="icon">⚙️</span>
+                    <span>Settings</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-bar">
+                <h1 id="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <button id="refreshBtn" class="btn btn-secondary">🔄 Refresh</button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- Dashboard Page -->
+                <div id="dashboard-page" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">📦</div>
+                            <div class="stat-info">
+                                <h3 id="total-items">0</h3>
+                                <p>Total Items</p>
+                            </div>
+                        </div>
+                        <div class="stat-card low-stock">
+                            <div class="stat-icon">⚠️</div>
+                            <div class="stat-info">
+                                <h3 id="low-stock-count">0</h3>
+                                <p>Low Stock Items</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🏢</div>
+                            <div class="stat-info">
+                                <h3 id="total-centers">0</h3>
+                                <p>Active Centers</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-info">
+                                <h3 id="total-transactions">0</h3>
+                                <p>Total Transactions</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-content">
+                        <div class="card">
+                            <h3>Low Stock Alert</h3>
+                            <div class="table-container">
+                                <table id="low-stock-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Item Name</th>
+                                            <th>Category</th>
+                                            <th>Current Qty</th>
+                                            <th>Reorder Level</th>
+                                            <th>Unit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Stock Page -->
+                <div id="current-stock-page" class="page">
+                    <div class="page-actions">
+                        <input type="text" id="stock-search" class="search-input" placeholder="Search items...">
+                        <button id="viewHistoryBtn" class="btn btn-secondary">📋 View History</button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table id="current-stock-table">
+                                <thead>
+                                    <tr>
+                                        <th>Item ID</th>
+                                        <th>Item Name</th>
+                                        <th>Category</th>
+                                        <th>Current Quantity</th>
+                                        <th>Unit</th>
+                                        <th>Reorder Level</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Incoming Stock Page -->
+                <div id="incoming-page" class="page">
+                    <div class="page-actions">
+                        <button id="addIncomingBtn" class="btn btn-primary">➕ Add Incoming Stock</button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table id="incoming-table">
+                                <thead>
+                                    <tr>
+                                        <th>GRN ID</th>
+                                        <th>Date</th>
+                                        <th>Item Name</th>
+                                        <th>Supplier</th>
+                                        <th>Quantity</th>
+                                        <th>Unit</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Donations Page -->
+                <div id="donations-page" class="page">
+                    <div class="page-actions">
+                        <button id="addDonationBtn" class="btn btn-primary">➕ Add Donation</button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table id="donations-table">
+                                <thead>
+                                    <tr>
+                                        <th>Donation ID</th>
+                                        <th>Date</th>
+                                        <th>Item Name</th>
+                                        <th>Donor</th>
+                                        <th>Quantity</th>
+                                        <th>Unit</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Outgoing Stock Page -->
+                <div id="outgoing-page" class="page">
+                    <div class="page-actions">
+                        <button id="addOutgoingBtn" class="btn btn-primary">➕ Dispatch Stock</button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table id="outgoing-table">
+                                <thead>
+                                    <tr>
+                                        <th>Dispatch ID</th>
+                                        <th>Date</th>
+                                        <th>Center</th>
+                                        <th>Item</th>
+                                        <th>Requested</th>
+                                        <th>Issued</th>
+                                        <th>Officer</th>
+                                        <th>NIC</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items Master Page -->
+                <div id="items-page" class="page">
+                    <div class="page-actions">
+                        <button id="addItemBtn" class="btn btn-primary">➕ Add Item</button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table id="items-table">
+                                <thead>
+                                    <tr>
+                                        <th>Item ID</th>
+                                        <th>Item Name</th>
+                                        <th>Unit</th>
+                                        <th>Category</th>
+                                        <th>Reorder Level</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Centers Master Page -->
+                <div id="centers-page" class="page">
+                    <div class="page-actions">
+                        <button id="addCenterBtn" class="btn btn-primary">➕ Add Center</button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table id="centers-table">
+                                <thead>
+                                    <tr>
+                                        <th>Center ID</th>
+                                        <th>Center Name</th>
+                                        <th>District</th>
+                                        <th>Contact Person</th>
+                                        <th>Phone</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div id="settings-page" class="page">
+                    <div class="card">
+                        <h3>Database Management</h3>
+                        <div class="settings-group">
+                            <button id="exportDbBtn" class="btn btn-primary">💾 Export Database</button>
+                            <p class="help-text">Export the current database to a backup file</p>
+                        </div>
+                        <div class="settings-group">
+                            <button id="importDbBtn" class="btn btn-warning">📂 Import Database</button>
+                            <p class="help-text">Import a database from a backup file (will replace current data)</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>About</h3>
+                        <p><strong>Application:</strong> DMC Inventory Management System</p>
+                        <p><strong>Version:</strong> 1.0.0</p>
+                        <p><strong>Purpose:</strong> Track inventory for Disaster Management Centers</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">Modal Title</h2>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
