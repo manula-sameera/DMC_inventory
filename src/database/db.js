@@ -241,7 +241,7 @@ class DatabaseManager {
     getIncomingStockReport(dateFrom, dateTo, itemIds = null) {
         let query = `
             SELECT 
-                inc.Incoming_ID,
+                inc.GRN_ID,
                 inc.Date_Received as Received_Date,
                 i.Item_Name,
                 i.Unit_Measure,
@@ -280,7 +280,7 @@ class DatabaseManager {
     getOutgoingStockReport(dateFrom, dateTo, itemIds = null) {
         let query = `
             SELECT 
-                out.Outgoing_ID,
+                out.Dispatch_ID,
                 out.Date_Issued as Dispatch_Date,
                 i.Item_Name,
                 i.Unit_Measure,
@@ -326,7 +326,7 @@ class DatabaseManager {
                 i.Unit_Measure,
                 don.Qty_Received as Quantity,
                 don.Donor_Name,
-                don.Donor_Contact
+                don.Remarks as Donor_Contact
             FROM DONATIONS don
             JOIN ITEMS_MASTER i ON don.Item_ID = i.Item_ID
             WHERE 1=1
