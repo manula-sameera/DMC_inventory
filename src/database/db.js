@@ -126,6 +126,20 @@ class DatabaseManager {
         return stmt.run(stock.Date_Received, stock.Item_ID, stock.Supplier_Name, stock.Qty_Received, stock.Remarks || null);
     }
 
+    updateIncomingStock(grnId, stock) {
+        const stmt = this.db.prepare(`
+            UPDATE INCOMING_STOCK
+            SET Date_Received = ?, Item_ID = ?, Supplier_Name = ?, Qty_Received = ?, Remarks = ?
+            WHERE GRN_ID = ?
+        `);
+        return stmt.run(stock.Date_Received, stock.Item_ID, stock.Supplier_Name, stock.Qty_Received, stock.Remarks || null, grnId);
+    }
+
+    deleteIncomingStock(grnId) {
+        const stmt = this.db.prepare('DELETE FROM INCOMING_STOCK WHERE GRN_ID = ?');
+        return stmt.run(grnId);
+    }
+
     // Donations Methods
     getAllDonations() {
         const stmt = this.db.prepare(`
@@ -143,6 +157,20 @@ class DatabaseManager {
             VALUES (?, ?, ?, ?, ?)
         `);
         return stmt.run(donation.Date_Received, donation.Item_ID, donation.Donor_Name, donation.Qty_Received, donation.Remarks || null);
+    }
+
+    updateDonation(donationId, donation) {
+        const stmt = this.db.prepare(`
+            UPDATE DONATIONS
+            SET Date_Received = ?, Item_ID = ?, Donor_Name = ?, Qty_Received = ?, Remarks = ?
+            WHERE Donation_ID = ?
+        `);
+        return stmt.run(donation.Date_Received, donation.Item_ID, donation.Donor_Name, donation.Qty_Received, donation.Remarks || null, donationId);
+    }
+
+    deleteDonation(donationId) {
+        const stmt = this.db.prepare('DELETE FROM DONATIONS WHERE Donation_ID = ?');
+        return stmt.run(donationId);
     }
 
     // Outgoing Stock Methods
@@ -167,6 +195,25 @@ class DatabaseManager {
             stock.Qty_Requested, stock.Qty_Issued, stock.Officer_Name, 
             stock.Officer_NIC, stock.Remarks || null
         );
+    }
+
+    updateOutgoingStock(dispatchId, stock) {
+        const stmt = this.db.prepare(`
+            UPDATE OUTGOING_STOCK
+            SET Date_Issued = ?, Center_ID = ?, Item_ID = ?, Qty_Requested = ?, Qty_Issued = ?, 
+                Officer_Name = ?, Officer_NIC = ?, Remarks = ?
+            WHERE Dispatch_ID = ?
+        `);
+        return stmt.run(
+            stock.Date_Issued, stock.Center_ID, stock.Item_ID, 
+            stock.Qty_Requested, stock.Qty_Issued, stock.Officer_Name, 
+            stock.Officer_NIC, stock.Remarks || null, dispatchId
+        );
+    }
+
+    deleteOutgoingStock(dispatchId) {
+        const stmt = this.db.prepare('DELETE FROM OUTGOING_STOCK WHERE Dispatch_ID = ?');
+        return stmt.run(dispatchId);
     }
 
     // Current Stock Methods

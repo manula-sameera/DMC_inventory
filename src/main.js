@@ -64,14 +64,20 @@ ipcMain.handle('centers:delete', (event, centerId) => db.deleteCenter(centerId))
 // IPC Handlers for Incoming Stock
 ipcMain.handle('incoming:getAll', () => db.getAllIncomingStock());
 ipcMain.handle('incoming:add', (event, stock) => db.addIncomingStock(stock));
+ipcMain.handle('incoming:update', (event, grnId, stock) => db.updateIncomingStock(grnId, stock));
+ipcMain.handle('incoming:delete', (event, grnId) => db.deleteIncomingStock(grnId));
 
 // IPC Handlers for Donations
 ipcMain.handle('donations:getAll', () => db.getAllDonations());
 ipcMain.handle('donations:add', (event, donation) => db.addDonation(donation));
+ipcMain.handle('donations:update', (event, donationId, donation) => db.updateDonation(donationId, donation));
+ipcMain.handle('donations:delete', (event, donationId) => db.deleteDonation(donationId));
 
 // IPC Handlers for Outgoing Stock
 ipcMain.handle('outgoing:getAll', () => db.getAllOutgoingStock());
 ipcMain.handle('outgoing:add', (event, stock) => db.addOutgoingStock(stock));
+ipcMain.handle('outgoing:update', (event, dispatchId, stock) => db.updateOutgoingStock(dispatchId, stock));
+ipcMain.handle('outgoing:delete', (event, dispatchId) => db.deleteOutgoingStock(dispatchId));
 
 // IPC Handlers for Current Stock
 ipcMain.handle('stock:getCurrent', () => db.getCurrentStock());

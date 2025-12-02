@@ -22,19 +22,25 @@ contextBridge.exposeInMainWorld('api', {
     // Incoming Stock API
     incoming: {
         getAll: () => ipcRenderer.invoke('incoming:getAll'),
-        add: (stock) => ipcRenderer.invoke('incoming:add', stock)
+        add: (stock) => ipcRenderer.invoke('incoming:add', stock),
+        update: (grnId, stock) => ipcRenderer.invoke('incoming:update', grnId, stock),
+        delete: (grnId) => ipcRenderer.invoke('incoming:delete', grnId)
     },
     
     // Donations API
     donations: {
         getAll: () => ipcRenderer.invoke('donations:getAll'),
-        add: (donation) => ipcRenderer.invoke('donations:add', donation)
+        add: (donation) => ipcRenderer.invoke('donations:add', donation),
+        update: (donationId, donation) => ipcRenderer.invoke('donations:update', donationId, donation),
+        delete: (donationId) => ipcRenderer.invoke('donations:delete', donationId)
     },
     
     // Outgoing Stock API
     outgoing: {
         getAll: () => ipcRenderer.invoke('outgoing:getAll'),
-        add: (stock) => ipcRenderer.invoke('outgoing:add', stock)
+        add: (stock) => ipcRenderer.invoke('outgoing:add', stock),
+        update: (dispatchId, stock) => ipcRenderer.invoke('outgoing:update', dispatchId, stock),
+        delete: (dispatchId) => ipcRenderer.invoke('outgoing:delete', dispatchId)
     },
     
     // Current Stock API

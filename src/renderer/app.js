@@ -566,7 +566,7 @@ function renderIncomingTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No incoming stock records</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No incoming stock records</td></tr>';
         return;
     }
 
@@ -580,6 +580,10 @@ function renderIncomingTable(data) {
                 <td><strong>${stock.Qty_Received}</strong></td>
                 <td>${escapeHtml(stock.Unit_Measure)}</td>
                 <td>${escapeHtml(stock.Remarks || '-')}</td>
+                <td class="actions">
+                    <button class="btn-icon btn-edit" onclick="showEditIncomingModal(${stock.GRN_ID})" title="Edit">✏️</button>
+                    <button class="btn-icon btn-delete" onclick="deleteIncomingStock(${stock.GRN_ID})" title="Delete">🗑️</button>
+                </td>
             </tr>
         `;
         tbody.innerHTML += row;
@@ -659,6 +663,98 @@ function showAddIncomingModal() {
     });
 }
 
+function showEditIncomingModal(grnId) {
+    const stock = currentData.incoming.find(s => s.GRN_ID === grnId);
+    if (!stock) {
+        showNotification('Record not found', 'error');
+        return;
+    }
+
+    const modalBody = `
+        <form id="editIncomingForm">
+            <div class="form-group">
+                <label>Date Received *</label>
+                <input type="date" id="dateReceived" value="${stock.Date_Received.split('T')[0]}" required>
+            </div>
+            <div class="form-group">
+                <label>Item *</label>
+                <div id="itemIdContainer"></div>
+            </div>
+            <div class="form-group">
+                <label>Supplier Name *</label>
+                <input type="text" id="supplierName" value="${escapeHtml(stock.Supplier_Name)}" required>
+            </div>
+            <div class="form-group">
+                <label>Quantity Received *</label>
+                <input type="number" id="qtyReceived" value="${stock.Qty_Received}" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>Remarks</label>
+                <textarea id="remarks">${escapeHtml(stock.Remarks || '')}</textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Record</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Edit Incoming Stock', modalBody);
+
+    const loadItemsPromise = currentData.items.length === 0 ? 
+        window.api.items.getActive().then(items => { currentData.items = items; }) : 
+        Promise.resolve();
+
+    loadItemsPromise.then(() => {
+        const itemOptions = currentData.items
+            .filter(i => i.Status === 'Active')
+            .map(i => ({ 
+                value: i.Item_ID.toString(), 
+                text: `${i.Item_Name} (${i.Unit_Measure})` 
+            }));
+
+        const itemSelect = new SearchableSelect('itemIdContainer', itemOptions, 'Search items...');
+        itemSelect.setValue(stock.Item_ID.toString());
+        window.currentItemSelect = itemSelect;
+    });
+
+    document.getElementById('editIncomingForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const itemId = window.currentItemSelect ? window.currentItemSelect.getValue() : '';
+        if (!itemId) {
+            showNotification('Please select an item', 'error');
+            return;
+        }
+        try {
+            await window.api.incoming.update(grnId, {
+                Date_Received: document.getElementById('dateReceived').value,
+                Item_ID: parseInt(itemId),
+                Supplier_Name: document.getElementById('supplierName').value,
+                Qty_Received: parseInt(document.getElementById('qtyReceived').value),
+                Remarks: document.getElementById('remarks').value || null
+            });
+            closeModal();
+            loadIncomingStock();
+            showNotification('Incoming stock updated successfully', 'success');
+        } catch (error) {
+            showNotification('Failed to update incoming stock: ' + error.message, 'error');
+        }
+    });
+}
+
+async function deleteIncomingStock(grnId) {
+    if (!confirm('Are you sure you want to delete this incoming stock record?')) {
+        return;
+    }
+    try {
+        await window.api.incoming.delete(grnId);
+        loadIncomingStock();
+        showNotification('Incoming stock deleted successfully', 'success');
+    } catch (error) {
+        showNotification('Failed to delete incoming stock: ' + error.message, 'error');
+    }
+}
+
 // Donations Functions
 async function loadDonations() {
     try {
@@ -676,7 +772,7 @@ function renderDonationsTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No donation records</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No donation records</td></tr>';
         return;
     }
 
@@ -690,6 +786,10 @@ function renderDonationsTable(data) {
                 <td><strong>${donation.Qty_Received}</strong></td>
                 <td>${escapeHtml(donation.Unit_Measure)}</td>
                 <td>${escapeHtml(donation.Remarks || '-')}</td>
+                <td class="actions">
+                    <button class="btn-icon btn-edit" onclick="showEditDonationModal(${donation.Donation_ID})" title="Edit">✏️</button>
+                    <button class="btn-icon btn-delete" onclick="deleteDonation(${donation.Donation_ID})" title="Delete">🗑️</button>
+                </td>
             </tr>
         `;
         tbody.innerHTML += row;
@@ -769,6 +869,98 @@ function showAddDonationModal() {
     });
 }
 
+function showEditDonationModal(donationId) {
+    const donation = currentData.donations.find(d => d.Donation_ID === donationId);
+    if (!donation) {
+        showNotification('Record not found', 'error');
+        return;
+    }
+
+    const modalBody = `
+        <form id="editDonationForm">
+            <div class="form-group">
+                <label>Date Received *</label>
+                <input type="date" id="dateReceived" value="${donation.Date_Received.split('T')[0]}" required>
+            </div>
+            <div class="form-group">
+                <label>Item *</label>
+                <div id="donationItemIdContainer"></div>
+            </div>
+            <div class="form-group">
+                <label>Donor Name *</label>
+                <input type="text" id="donorName" value="${escapeHtml(donation.Donor_Name)}" required>
+            </div>
+            <div class="form-group">
+                <label>Quantity Received *</label>
+                <input type="number" id="qtyReceived" value="${donation.Qty_Received}" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>Remarks</label>
+                <textarea id="remarks">${escapeHtml(donation.Remarks || '')}</textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Donation</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Edit Donation Record', modalBody);
+
+    const loadItemsPromise = currentData.items.length === 0 ? 
+        window.api.items.getActive().then(items => { currentData.items = items; }) : 
+        Promise.resolve();
+
+    loadItemsPromise.then(() => {
+        const itemOptions = currentData.items
+            .filter(i => i.Status === 'Active')
+            .map(i => ({ 
+                value: i.Item_ID.toString(), 
+                text: `${i.Item_Name} (${i.Unit_Measure})` 
+            }));
+
+        const itemSelect = new SearchableSelect('donationItemIdContainer', itemOptions, 'Search items...');
+        itemSelect.setValue(donation.Item_ID.toString());
+        window.currentDonationItemSelect = itemSelect;
+    });
+
+    document.getElementById('editDonationForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const itemId = window.currentDonationItemSelect ? window.currentDonationItemSelect.getValue() : '';
+        if (!itemId) {
+            showNotification('Please select an item', 'error');
+            return;
+        }
+        try {
+            await window.api.donations.update(donationId, {
+                Date_Received: document.getElementById('dateReceived').value,
+                Item_ID: parseInt(itemId),
+                Donor_Name: document.getElementById('donorName').value,
+                Qty_Received: parseInt(document.getElementById('qtyReceived').value),
+                Remarks: document.getElementById('remarks').value || null
+            });
+            closeModal();
+            loadDonations();
+            showNotification('Donation updated successfully', 'success');
+        } catch (error) {
+            showNotification('Failed to update donation: ' + error.message, 'error');
+        }
+    });
+}
+
+async function deleteDonation(donationId) {
+    if (!confirm('Are you sure you want to delete this donation record?')) {
+        return;
+    }
+    try {
+        await window.api.donations.delete(donationId);
+        loadDonations();
+        showNotification('Donation deleted successfully', 'success');
+    } catch (error) {
+        showNotification('Failed to delete donation: ' + error.message, 'error');
+    }
+}
+
 // Outgoing Stock Functions
 async function loadOutgoingStock() {
     try {
@@ -786,7 +978,7 @@ function renderOutgoingTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No dispatch records</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No dispatch records</td></tr>';
         return;
     }
 
@@ -801,6 +993,10 @@ function renderOutgoingTable(data) {
                 <td><strong>${stock.Qty_Issued}</strong></td>
                 <td>${escapeHtml(stock.Officer_Name)}</td>
                 <td>${escapeHtml(stock.Officer_NIC)}</td>
+                <td class="actions">
+                    <button class="btn-icon btn-edit" onclick="showEditOutgoingModal(${stock.Dispatch_ID})" title="Edit">✏️</button>
+                    <button class="btn-icon btn-delete" onclick="deleteOutgoingStock(${stock.Dispatch_ID})" title="Delete">🗑️</button>
+                </td>
             </tr>
         `;
         tbody.innerHTML += row;
@@ -915,6 +1111,136 @@ function showAddOutgoingModal() {
             showNotification('Failed to dispatch stock: ' + error.message, 'error');
         }
     });
+}
+
+function showEditOutgoingModal(dispatchId) {
+    const stock = currentData.outgoing.find(s => s.Dispatch_ID === dispatchId);
+    if (!stock) {
+        showNotification('Record not found', 'error');
+        return;
+    }
+
+    const modalBody = `
+        <form id="editOutgoingForm">
+            <div class="form-group">
+                <label>Date Issued *</label>
+                <input type="date" id="dateIssued" value="${stock.Date_Issued.split('T')[0]}" required>
+            </div>
+            <div class="form-group">
+                <label>Center *</label>
+                <div id="centerIdContainer"></div>
+            </div>
+            <div class="form-group">
+                <label>Item *</label>
+                <div id="outgoingItemIdContainer"></div>
+            </div>
+            <div class="form-group">
+                <label>Quantity Requested *</label>
+                <input type="number" id="qtyRequested" value="${stock.Qty_Requested}" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>Quantity Issued *</label>
+                <input type="number" id="qtyIssued" value="${stock.Qty_Issued}" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Officer Name *</label>
+                <input type="text" id="officerName" value="${escapeHtml(stock.Officer_Name)}" required>
+            </div>
+            <div class="form-group">
+                <label>Officer NIC *</label>
+                <input type="text" id="officerNIC" value="${escapeHtml(stock.Officer_NIC)}" required>
+            </div>
+            <div class="form-group">
+                <label>Remarks</label>
+                <textarea id="remarks">${escapeHtml(stock.Remarks || '')}</textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Dispatch</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Edit Dispatch Record', modalBody);
+
+    const loadPromise = (currentData.items.length === 0 || currentData.centers.length === 0) ?
+        Promise.all([
+            window.api.items.getActive(),
+            window.api.centers.getActive()
+        ]).then(([items, centers]) => {
+            currentData.items = items;
+            currentData.centers = centers;
+        }) : Promise.resolve();
+
+    loadPromise.then(() => {
+        const itemOptions = currentData.items
+            .filter(i => i.Status === 'Active')
+            .map(i => ({ 
+                value: i.Item_ID.toString(), 
+                text: `${i.Item_Name} (${i.Unit_Measure})` 
+            }));
+
+        const centerOptions = currentData.centers
+            .filter(c => c.Status === 'Active')
+            .map(c => ({ 
+                value: c.Center_ID.toString(), 
+                text: `${c.Center_Name} - ${c.District}` 
+            }));
+
+        const itemSelect = new SearchableSelect('outgoingItemIdContainer', itemOptions, 'Search items...');
+        itemSelect.setValue(stock.Item_ID.toString());
+        const centerSelect = new SearchableSelect('centerIdContainer', centerOptions, 'Search centers...');
+        centerSelect.setValue(stock.Center_ID.toString());
+        
+        window.currentOutgoingItemSelect = itemSelect;
+        window.currentCenterSelect = centerSelect;
+    });
+
+    document.getElementById('editOutgoingForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const itemId = window.currentOutgoingItemSelect ? window.currentOutgoingItemSelect.getValue() : '';
+        const centerId = window.currentCenterSelect ? window.currentCenterSelect.getValue() : '';
+        
+        if (!itemId) {
+            showNotification('Please select an item', 'error');
+            return;
+        }
+        if (!centerId) {
+            showNotification('Please select a center', 'error');
+            return;
+        }
+        
+        try {
+            await window.api.outgoing.update(dispatchId, {
+                Date_Issued: document.getElementById('dateIssued').value,
+                Center_ID: parseInt(centerId),
+                Item_ID: parseInt(itemId),
+                Qty_Requested: parseInt(document.getElementById('qtyRequested').value),
+                Qty_Issued: parseInt(document.getElementById('qtyIssued').value),
+                Officer_Name: document.getElementById('officerName').value,
+                Officer_NIC: document.getElementById('officerNIC').value,
+                Remarks: document.getElementById('remarks').value || null
+            });
+            closeModal();
+            loadOutgoingStock();
+            showNotification('Dispatch record updated successfully', 'success');
+        } catch (error) {
+            showNotification('Failed to update dispatch record: ' + error.message, 'error');
+        }
+    });
+}
+
+async function deleteOutgoingStock(dispatchId) {
+    if (!confirm('Are you sure you want to delete this dispatch record?')) {
+        return;
+    }
+    try {
+        await window.api.outgoing.delete(dispatchId);
+        loadOutgoingStock();
+        showNotification('Dispatch record deleted successfully', 'success');
+    } catch (error) {
+        showNotification('Failed to delete dispatch record: ' + error.message, 'error');
+    }
 }
 
 // Database Import/Export

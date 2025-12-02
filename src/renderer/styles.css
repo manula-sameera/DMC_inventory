@@ -422,6 +422,36 @@ tbody tr:hover {
     font-size: 12px;
 }
 
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 6px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon:hover {
+    background-color: var(--bg-color);
+    transform: scale(1.1);
+}
+
+.btn-edit:hover {
+    background-color: #dbeafe;
+}
+
+.btn-delete:hover {
+    background-color: #fee2e2;
+}
+
+td.actions {
+    white-space: nowrap;
+}
+
 /* Modal Styles */
 .modal {
     display: none;
