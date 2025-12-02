@@ -22,6 +22,7 @@ class DatabaseManager {
             this.db = new Database(this.dbPath);
             this.db.pragma('journal_mode = WAL');
             this.db.pragma('foreign_keys = ON');
+            this.db.pragma('encoding = "UTF-8"');
             
             this.createTables();
             console.log('Database initialized successfully at:', this.dbPath);
@@ -199,6 +200,160 @@ class DatabaseManager {
         `).all(itemId);
 
         return [...incoming, ...donations, ...outgoing].sort((a, b) => new Date(b.Date) - new Date(a.Date));
+    }
+
+    // Report Query Methods
+    getCurrentStockReport(itemIds = null) {
+        let query = `
+            SELECT 
+                i.Item_ID,
+                i.Item_Name,
+                i.Category,
+                i.Unit_Measure,
+                i.Reorder_Level,
+                COALESCE(
+                    (SELECT SUM(Qty_Received) FROM INCOMING_STOCK WHERE Item_ID = i.Item_ID),
+                    0
+                ) +
+                COALESCE(
+                    (SELECT SUM(Qty_Received) FROM DONATIONS WHERE Item_ID = i.Item_ID),
+                    0
+                ) -
+                COALESCE(
+                    (SELECT SUM(Qty_Issued) FROM OUTGOING_STOCK WHERE Item_ID = i.Item_ID),
+                    0
+                ) as Current_Quantity
+            FROM ITEMS_MASTER i
+            WHERE i.Status = 'Active'
+        `;
+        
+        if (itemIds && itemIds.length > 0) {
+            const placeholders = itemIds.map(() => '?').join(',');
+            query += ` AND i.Item_ID IN (${placeholders})`;
+            const stmt = this.db.prepare(query + ' ORDER BY i.Item_Name');
+            return stmt.all(...itemIds);
+        } else {
+            const stmt = this.db.prepare(query + ' ORDER BY i.Item_Name');
+            return stmt.all();
+        }
+    }
+
+    getIncomingStockReport(dateFrom, dateTo, itemIds = null) {
+        let query = `
+            SELECT 
+                inc.Incoming_ID,
+                inc.Date_Received as Received_Date,
+                i.Item_Name,
+                i.Unit_Measure,
+                inc.Qty_Received as Quantity,
+                inc.Supplier_Name as Source_Name,
+                inc.Remarks
+            FROM INCOMING_STOCK inc
+            JOIN ITEMS_MASTER i ON inc.Item_ID = i.Item_ID
+            WHERE 1=1
+        `;
+        
+        const params = [];
+        
+        if (dateFrom) {
+            query += ` AND DATE(inc.Date_Received) >= DATE(?)`;
+            params.push(dateFrom);
+        }
+        
+        if (dateTo) {
+            query += ` AND DATE(inc.Date_Received) <= DATE(?)`;
+            params.push(dateTo);
+        }
+        
+        if (itemIds && itemIds.length > 0) {
+            const placeholders = itemIds.map(() => '?').join(',');
+            query += ` AND inc.Item_ID IN (${placeholders})`;
+            params.push(...itemIds);
+        }
+        
+        query += ` ORDER BY inc.Date_Received DESC, i.Item_Name`;
+        
+        const stmt = this.db.prepare(query);
+        return stmt.all(...params);
+    }
+
+    getOutgoingStockReport(dateFrom, dateTo, itemIds = null) {
+        let query = `
+            SELECT 
+                out.Outgoing_ID,
+                out.Date_Issued as Dispatch_Date,
+                i.Item_Name,
+                i.Unit_Measure,
+                out.Qty_Issued as Quantity,
+                c.Center_Name,
+                out.Remarks
+            FROM OUTGOING_STOCK out
+            JOIN ITEMS_MASTER i ON out.Item_ID = i.Item_ID
+            LEFT JOIN CENTERS_MASTER c ON out.Center_ID = c.Center_ID
+            WHERE 1=1
+        `;
+        
+        const params = [];
+        
+        if (dateFrom) {
+            query += ` AND DATE(out.Date_Issued) >= DATE(?)`;
+            params.push(dateFrom);
+        }
+        
+        if (dateTo) {
+            query += ` AND DATE(out.Date_Issued) <= DATE(?)`;
+            params.push(dateTo);
+        }
+        
+        if (itemIds && itemIds.length > 0) {
+            const placeholders = itemIds.map(() => '?').join(',');
+            query += ` AND out.Item_ID IN (${placeholders})`;
+            params.push(...itemIds);
+        }
+        
+        query += ` ORDER BY out.Date_Issued DESC, i.Item_Name`;
+        
+        const stmt = this.db.prepare(query);
+        return stmt.all(...params);
+    }
+
+    getDonationsReport(dateFrom, dateTo, itemIds = null) {
+        let query = `
+            SELECT 
+                don.Donation_ID,
+                don.Date_Received as Donation_Date,
+                i.Item_Name,
+                i.Unit_Measure,
+                don.Qty_Received as Quantity,
+                don.Donor_Name,
+                don.Donor_Contact
+            FROM DONATIONS don
+            JOIN ITEMS_MASTER i ON don.Item_ID = i.Item_ID
+            WHERE 1=1
+        `;
+        
+        const params = [];
+        
+        if (dateFrom) {
+            query += ` AND DATE(don.Date_Received) >= DATE(?)`;
+            params.push(dateFrom);
+        }
+        
+        if (dateTo) {
+            query += ` AND DATE(don.Date_Received) <= DATE(?)`;
+            params.push(dateTo);
+        }
+        
+        if (itemIds && itemIds.length > 0) {
+            const placeholders = itemIds.map(() => '?').join(',');
+            query += ` AND don.Item_ID IN (${placeholders})`;
+            params.push(...itemIds);
+        }
+        
+        query += ` ORDER BY don.Date_Received DESC, i.Item_Name`;
+        
+        const stmt = this.db.prepare(query);
+        return stmt.all(...params);
     }
 
     // Import/Export Methods

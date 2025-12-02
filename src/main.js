@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const db = require('./database/db');
+const pdfGenerator = require('./reports/pdfGenerator');
 
 let mainWindow;
 
@@ -112,4 +114,82 @@ ipcMain.handle('db:import', async () => {
         return importResult;
     }
     return { success: false, canceled: true };
+});
+
+// IPC Handlers for Reports
+ipcMain.handle('reports:generatePDF', async (event, options) => {
+    try {
+        const { reportType, selectedItemIds, dateFrom, dateTo } = options;
+        
+        // Get default downloads folder
+        const downloadsPath = app.getPath('downloads');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+        const defaultFileName = `DMC_${reportType}_${timestamp}.pdf`;
+        
+        // Show save dialog
+        const result = await dialog.showSaveDialog(mainWindow, {
+            title: 'Save Report',
+            defaultPath: path.join(downloadsPath, defaultFileName),
+            filters: [
+                { name: 'PDF Files', extensions: ['pdf'] },
+                { name: 'All Files', extensions: ['*'] }
+            ]
+        });
+
+        if (result.canceled || !result.filePath) {
+            return { success: false, canceled: true };
+        }
+
+        const outputPath = result.filePath;
+        let data, reportPath;
+
+        switch (reportType) {
+            case 'current-stock':
+                data = db.getCurrentStockReport(selectedItemIds);
+                reportPath = await pdfGenerator.generateCurrentStockReport(
+                    data, 
+                    selectedItemIds, 
+                    outputPath
+                );
+                break;
+
+            case 'incoming':
+                data = db.getIncomingStockReport(dateFrom, dateTo, selectedItemIds);
+                reportPath = await pdfGenerator.generateIncomingReport(
+                    data,
+                    { from: dateFrom, to: dateTo },
+                    selectedItemIds,
+                    outputPath
+                );
+                break;
+
+            case 'outgoing':
+                data = db.getOutgoingStockReport(dateFrom, dateTo, selectedItemIds);
+                reportPath = await pdfGenerator.generateOutgoingReport(
+                    data,
+                    { from: dateFrom, to: dateTo },
+                    selectedItemIds,
+                    outputPath
+                );
+                break;
+
+            case 'donations':
+                data = db.getDonationsReport(dateFrom, dateTo, selectedItemIds);
+                reportPath = await pdfGenerator.generateDonationsReport(
+                    data,
+                    { from: dateFrom, to: dateTo },
+                    selectedItemIds,
+                    outputPath
+                );
+                break;
+
+            default:
+                return { success: false, error: 'Invalid report type' };
+        }
+
+        return { success: true, path: reportPath };
+    } catch (error) {
+        console.error('Error generating PDF report:', error);
+        return { success: false, error: error.message };
+    }
 });

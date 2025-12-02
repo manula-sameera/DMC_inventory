@@ -48,5 +48,10 @@ contextBridge.exposeInMainWorld('api', {
     database: {
         export: () => ipcRenderer.invoke('db:export'),
         import: () => ipcRenderer.invoke('db:import')
+    },
+
+    // Reports API
+    reports: {
+        generatePDF: (options) => ipcRenderer.invoke('reports:generatePDF', options)
     }
 });

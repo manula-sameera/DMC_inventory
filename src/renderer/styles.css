@@ -584,6 +584,37 @@ tbody tr:hover {
     margin-bottom: 24px;
 }
 
+/* Reports Page Styles */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+#itemsList label {
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+#itemsList label:hover {
+    background-color: var(--bg-color);
+}
+
+#itemsList input[type="checkbox"] {
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+#reportPreview {
+    padding: 16px;
+    background-color: var(--bg-color);
+    border-radius: 4px;
+    line-height: 1.6;
+}
+
 /* Animations */
 @keyframes fadeIn {
     from { opacity: 0; }

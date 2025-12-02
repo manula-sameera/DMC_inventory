@@ -75,6 +75,7 @@ function switchPage(pageName) {
         'outgoing': 'Dispatch/Outgoing Stock',
         'items': 'Items Master',
         'centers': 'Centers Master',
+        'reports': 'Reports',
         'settings': 'Settings'
     };
     document.getElementById('page-title').textContent = titles[pageName];
@@ -96,6 +97,9 @@ function loadPageData(pageName) {
             break;
         case 'donations':
             loadDonations();
+            break;
+        case 'reports':
+            loadReportsPage();
             break;
         case 'outgoing':
             loadOutgoingStock();
@@ -1089,5 +1093,117 @@ class SearchableSelect {
         this.selectedValue = '';
         this.selectedText = '';
         this.input.value = '';
+    }
+}
+
+// Reports Functions
+async function loadReportsPage() {
+    try {
+        // Load items for selection
+        const items = await window.api.items.getActive();
+        currentData.items = items;
+
+        // Populate items list
+        const itemsList = document.getElementById('itemsList');
+        itemsList.innerHTML = items.map(item => `
+            <label style="display: block; padding: 5px;">
+                <input type="checkbox" class="item-checkbox" value="${item.Item_ID}">
+                ${escapeHtml(item.Item_Name)} (${escapeHtml(item.Unit_Measure)})
+            </label>
+        `).join('');
+
+        // Setup event listeners
+        setupReportsEventListeners();
+    } catch (error) {
+        console.error('Error loading reports page:', error);
+        showNotification('Failed to load reports page', 'error');
+    }
+}
+
+function setupReportsEventListeners() {
+    const reportType = document.getElementById('reportType');
+    const selectAllItems = document.getElementById('selectAllItems');
+    const itemSelectionSection = document.getElementById('itemSelectionSection');
+    const dateRangeSection = document.getElementById('dateRangeSection');
+    const generateReportBtn = document.getElementById('generateReportBtn');
+
+    // Report type change
+    reportType.addEventListener('change', () => {
+        const type = reportType.value;
+        if (type === 'current-stock') {
+            dateRangeSection.style.display = 'none';
+        } else {
+            dateRangeSection.style.display = 'block';
+            // Set default dates
+            const today = new Date().toISOString().split('T')[0];
+            const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            document.getElementById('reportDateFrom').value = monthAgo;
+            document.getElementById('reportDateTo').value = today;
+        }
+    });
+
+    // Select all items checkbox
+    selectAllItems.addEventListener('change', () => {
+        const isChecked = selectAllItems.checked;
+        itemSelectionSection.style.display = isChecked ? 'none' : 'block';
+        
+        if (!isChecked) {
+            // Check all items by default when opening
+            document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = true);
+        }
+    });
+
+    // Generate report button
+    generateReportBtn.addEventListener('click', generateReport);
+}
+
+async function generateReport() {
+    try {
+        const reportType = document.getElementById('reportType').value;
+        const selectAllItems = document.getElementById('selectAllItems').checked;
+        
+        let selectedItemIds = null;
+        if (!selectAllItems) {
+            selectedItemIds = Array.from(document.querySelectorAll('.item-checkbox:checked'))
+                .map(cb => parseInt(cb.value));
+            
+            if (selectedItemIds.length === 0) {
+                showNotification('Please select at least one item', 'error');
+                return;
+            }
+        }
+
+        const dateFrom = document.getElementById('reportDateFrom').value;
+        const dateTo = document.getElementById('reportDateTo').value;
+
+        // Validate date range for time-based reports
+        if (reportType !== 'current-stock') {
+            if (!dateFrom || !dateTo) {
+                showNotification('Please select date range', 'error');
+                return;
+            }
+            if (dateFrom > dateTo) {
+                showNotification('From date cannot be after To date', 'error');
+                return;
+            }
+        }
+
+        showNotification('Generating PDF report...', 'info');
+
+        const result = await window.api.reports.generatePDF({
+            reportType,
+            selectedItemIds,
+            dateFrom,
+            dateTo
+        });
+
+        if (result.success) {
+            showNotification('Report generated successfully! File saved to: ' + result.path, 'success');
+        } else {
+            showNotification('Failed to generate report: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error generating report:', error);
+        showNotification('Failed to generate report', 'error');
     }
 }
