@@ -9,7 +9,11 @@
     "build:win": "electron-builder --win",
     "postinstall": "electron-builder install-app-deps"
   },
-  "keywords": ["inventory", "disaster-management", "electron"],
+  "keywords": [
+    "inventory",
+    "disaster-management",
+    "electron"
+  ],
   "author": "DMC",
   "license": "MIT",
   "devDependencies": {
@@ -17,7 +21,8 @@
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
-    "better-sqlite3": "^9.2.2"
+    "better-sqlite3": "^9.2.2",
+    "update-electron-app": "^3.1.1"
   },
   "build": {
     "appId": "com.dmc.inventory",
@@ -26,7 +31,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.ico"
@@ -45,7 +52,9 @@
       {
         "from": "node_modules/better-sqlite3",
         "to": "better-sqlite3",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ]
   }

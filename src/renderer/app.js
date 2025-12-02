@@ -12,6 +12,7 @@ let currentData = {
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
     initializeNavigation();
+    initializeSidebar();
     initializeEventListeners();
     loadDashboard();
 });
@@ -25,6 +26,31 @@ function initializeNavigation() {
             switchPage(pageName);
         });
     });
+}
+
+// Sidebar Toggle
+function initializeSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+
+    // Toggle sidebar collapse
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+    });
+
+    // Hamburger menu to expand sidebar
+    hamburgerBtn.addEventListener('click', () => {
+        sidebar.classList.remove('collapsed');
+        localStorage.setItem('sidebarCollapsed', 'false');
+    });
+
+    // Restore sidebar state
+    const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    if (isCollapsed) {
+        sidebar.classList.add('collapsed');
+    }
 }
 
 function switchPage(pageName) {
@@ -557,11 +583,6 @@ function renderIncomingTable(data) {
 }
 
 function showAddIncomingModal() {
-    const itemsOptions = currentData.items
-        .filter(i => i.Status === 'Active')
-        .map(i => `<option value="${i.Item_ID}">${escapeHtml(i.Item_Name)} (${escapeHtml(i.Unit_Measure)})</option>`)
-        .join('');
-
     const modalBody = `
         <form id="incomingForm">
             <div class="form-group">
@@ -570,10 +591,7 @@ function showAddIncomingModal() {
             </div>
             <div class="form-group">
                 <label>Item *</label>
-                <select id="itemId" required>
-                    <option value="">Select Item</option>
-                    ${itemsOptions}
-                </select>
+                <div id="itemIdContainer"></div>
             </div>
             <div class="form-group">
                 <label>Supplier Name *</label>
@@ -597,21 +615,33 @@ function showAddIncomingModal() {
     showModal('Add Incoming Stock', modalBody);
 
     // Load items if not already loaded
-    if (currentData.items.length === 0) {
-        window.api.items.getActive().then(items => {
-            currentData.items = items;
-            const select = document.getElementById('itemId');
-            select.innerHTML = '<option value="">Select Item</option>' + 
-                items.map(i => `<option value="${i.Item_ID}">${escapeHtml(i.Item_Name)} (${escapeHtml(i.Unit_Measure)})</option>`).join('');
-        });
-    }
+    const loadItemsPromise = currentData.items.length === 0 ? 
+        window.api.items.getActive().then(items => { currentData.items = items; }) : 
+        Promise.resolve();
+
+    loadItemsPromise.then(() => {
+        const itemOptions = currentData.items
+            .filter(i => i.Status === 'Active')
+            .map(i => ({ 
+                value: i.Item_ID.toString(), 
+                text: `${i.Item_Name} (${i.Unit_Measure})` 
+            }));
+
+        const itemSelect = new SearchableSelect('itemIdContainer', itemOptions, 'Search items...');
+        window.currentItemSelect = itemSelect;
+    });
 
     document.getElementById('incomingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        const itemId = window.currentItemSelect ? window.currentItemSelect.getValue() : '';
+        if (!itemId) {
+            showNotification('Please select an item', 'error');
+            return;
+        }
         try {
             await window.api.incoming.add({
                 Date_Received: document.getElementById('dateReceived').value,
-                Item_ID: parseInt(document.getElementById('itemId').value),
+                Item_ID: parseInt(itemId),
                 Supplier_Name: document.getElementById('supplierName').value,
                 Qty_Received: parseInt(document.getElementById('qtyReceived').value),
                 Remarks: document.getElementById('remarks').value || null
@@ -663,11 +693,6 @@ function renderDonationsTable(data) {
 }
 
 function showAddDonationModal() {
-    const itemsOptions = currentData.items
-        .filter(i => i.Status === 'Active')
-        .map(i => `<option value="${i.Item_ID}">${escapeHtml(i.Item_Name)} (${escapeHtml(i.Unit_Measure)})</option>`)
-        .join('');
-
     const modalBody = `
         <form id="donationForm">
             <div class="form-group">
@@ -676,10 +701,7 @@ function showAddDonationModal() {
             </div>
             <div class="form-group">
                 <label>Item *</label>
-                <select id="itemId" required>
-                    <option value="">Select Item</option>
-                    ${itemsOptions}
-                </select>
+                <div id="donationItemIdContainer"></div>
             </div>
             <div class="form-group">
                 <label>Donor Name *</label>
@@ -703,21 +725,33 @@ function showAddDonationModal() {
     showModal('Add Donation Record', modalBody);
 
     // Load items if not already loaded
-    if (currentData.items.length === 0) {
-        window.api.items.getActive().then(items => {
-            currentData.items = items;
-            const select = document.getElementById('itemId');
-            select.innerHTML = '<option value="">Select Item</option>' + 
-                items.map(i => `<option value="${i.Item_ID}">${escapeHtml(i.Item_Name)} (${escapeHtml(i.Unit_Measure)})</option>`).join('');
-        });
-    }
+    const loadItemsPromise = currentData.items.length === 0 ? 
+        window.api.items.getActive().then(items => { currentData.items = items; }) : 
+        Promise.resolve();
+
+    loadItemsPromise.then(() => {
+        const itemOptions = currentData.items
+            .filter(i => i.Status === 'Active')
+            .map(i => ({ 
+                value: i.Item_ID.toString(), 
+                text: `${i.Item_Name} (${i.Unit_Measure})` 
+            }));
+
+        const itemSelect = new SearchableSelect('donationItemIdContainer', itemOptions, 'Search items...');
+        window.currentDonationItemSelect = itemSelect;
+    });
 
     document.getElementById('donationForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        const itemId = window.currentDonationItemSelect ? window.currentDonationItemSelect.getValue() : '';
+        if (!itemId) {
+            showNotification('Please select an item', 'error');
+            return;
+        }
         try {
             await window.api.donations.add({
                 Date_Received: document.getElementById('dateReceived').value,
-                Item_ID: parseInt(document.getElementById('itemId').value),
+                Item_ID: parseInt(itemId),
                 Donor_Name: document.getElementById('donorName').value,
                 Qty_Received: parseInt(document.getElementById('qtyReceived').value),
                 Remarks: document.getElementById('remarks').value || null
@@ -770,16 +804,6 @@ function renderOutgoingTable(data) {
 }
 
 function showAddOutgoingModal() {
-    const itemsOptions = currentData.items
-        .filter(i => i.Status === 'Active')
-        .map(i => `<option value="${i.Item_ID}">${escapeHtml(i.Item_Name)} (${escapeHtml(i.Unit_Measure)})</option>`)
-        .join('');
-
-    const centersOptions = currentData.centers
-        .filter(c => c.Status === 'Active')
-        .map(c => `<option value="${c.Center_ID}">${escapeHtml(c.Center_Name)} - ${escapeHtml(c.District)}</option>`)
-        .join('');
-
     const modalBody = `
         <form id="outgoingForm">
             <div class="form-group">
@@ -788,17 +812,11 @@ function showAddOutgoingModal() {
             </div>
             <div class="form-group">
                 <label>Center *</label>
-                <select id="centerId" required>
-                    <option value="">Select Center</option>
-                    ${centersOptions}
-                </select>
+                <div id="centerIdContainer"></div>
             </div>
             <div class="form-group">
                 <label>Item *</label>
-                <select id="itemId" required>
-                    <option value="">Select Item</option>
-                    ${itemsOptions}
-                </select>
+                <div id="outgoingItemIdContainer"></div>
             </div>
             <div class="form-group">
                 <label>Quantity Requested *</label>
@@ -830,31 +848,56 @@ function showAddOutgoingModal() {
     showModal('Dispatch Stock', modalBody);
 
     // Load items and centers if not already loaded
-    if (currentData.items.length === 0 || currentData.centers.length === 0) {
+    const loadPromise = (currentData.items.length === 0 || currentData.centers.length === 0) ?
         Promise.all([
             window.api.items.getActive(),
             window.api.centers.getActive()
         ]).then(([items, centers]) => {
             currentData.items = items;
             currentData.centers = centers;
-            
-            const itemSelect = document.getElementById('itemId');
-            itemSelect.innerHTML = '<option value="">Select Item</option>' + 
-                items.map(i => `<option value="${i.Item_ID}">${escapeHtml(i.Item_Name)} (${escapeHtml(i.Unit_Measure)})</option>`).join('');
-            
-            const centerSelect = document.getElementById('centerId');
-            centerSelect.innerHTML = '<option value="">Select Center</option>' + 
-                centers.map(c => `<option value="${c.Center_ID}">${escapeHtml(c.Center_Name)} - ${escapeHtml(c.District)}</option>`).join('');
-        });
-    }
+        }) : Promise.resolve();
+
+    loadPromise.then(() => {
+        const itemOptions = currentData.items
+            .filter(i => i.Status === 'Active')
+            .map(i => ({ 
+                value: i.Item_ID.toString(), 
+                text: `${i.Item_Name} (${i.Unit_Measure})` 
+            }));
+
+        const centerOptions = currentData.centers
+            .filter(c => c.Status === 'Active')
+            .map(c => ({ 
+                value: c.Center_ID.toString(), 
+                text: `${c.Center_Name} - ${c.District}` 
+            }));
+
+        const itemSelect = new SearchableSelect('outgoingItemIdContainer', itemOptions, 'Search items...');
+        const centerSelect = new SearchableSelect('centerIdContainer', centerOptions, 'Search centers...');
+        
+        window.currentOutgoingItemSelect = itemSelect;
+        window.currentCenterSelect = centerSelect;
+    });
 
     document.getElementById('outgoingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        const itemId = window.currentOutgoingItemSelect ? window.currentOutgoingItemSelect.getValue() : '';
+        const centerId = window.currentCenterSelect ? window.currentCenterSelect.getValue() : '';
+        
+        if (!itemId) {
+            showNotification('Please select an item', 'error');
+            return;
+        }
+        if (!centerId) {
+            showNotification('Please select a center', 'error');
+            return;
+        }
+        
         try {
             await window.api.outgoing.add({
                 Date_Issued: document.getElementById('dateIssued').value,
-                Center_ID: parseInt(document.getElementById('centerId').value),
-                Item_ID: parseInt(document.getElementById('itemId').value),
+                Center_ID: parseInt(centerId),
+                Item_ID: parseInt(itemId),
                 Qty_Requested: parseInt(document.getElementById('qtyRequested').value),
                 Qty_Issued: parseInt(document.getElementById('qtyIssued').value),
                 Officer_Name: document.getElementById('officerName').value,
@@ -935,4 +978,116 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Searchable Select Component
+class SearchableSelect {
+    constructor(containerId, options, placeholder = 'Search...') {
+        this.containerId = containerId;
+        this.options = options;
+        this.placeholder = placeholder;
+        this.selectedValue = '';
+        this.selectedText = '';
+        this.render();
+    }
+
+    render() {
+        const container = document.getElementById(this.containerId);
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="searchable-select">
+                <input 
+                    type="text" 
+                    class="searchable-select-input" 
+                    placeholder="${this.placeholder}"
+                    autocomplete="off"
+                />
+                <div class="searchable-select-dropdown"></div>
+            </div>
+        `;
+
+        this.input = container.querySelector('.searchable-select-input');
+        this.dropdown = container.querySelector('.searchable-select-dropdown');
+
+        this.input.addEventListener('focus', () => this.showDropdown());
+        this.input.addEventListener('input', (e) => this.filterOptions(e.target.value));
+        this.input.addEventListener('blur', () => {
+            setTimeout(() => this.hideDropdown(), 200);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!container.contains(e.target)) {
+                this.hideDropdown();
+            }
+        });
+    }
+
+    showDropdown() {
+        this.renderOptions(this.options);
+        this.dropdown.classList.add('active');
+    }
+
+    hideDropdown() {
+        this.dropdown.classList.remove('active');
+    }
+
+    filterOptions(searchTerm) {
+        const filtered = this.options.filter(opt => 
+            opt.text.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        this.renderOptions(filtered);
+    }
+
+    renderOptions(options) {
+        if (options.length === 0) {
+            this.dropdown.innerHTML = '<div class="searchable-select-option no-results">No results found</div>';
+            return;
+        }
+
+        this.dropdown.innerHTML = options.map(opt => `
+            <div class="searchable-select-option ${opt.value === this.selectedValue ? 'selected' : ''}" 
+                 data-value="${opt.value}">
+                ${escapeHtml(opt.text)}
+            </div>
+        `).join('');
+
+        this.dropdown.querySelectorAll('.searchable-select-option').forEach(option => {
+            if (!option.classList.contains('no-results')) {
+                option.addEventListener('click', () => {
+                    this.selectOption(option.dataset.value, option.textContent.trim());
+                });
+            }
+        });
+    }
+
+    selectOption(value, text) {
+        this.selectedValue = value;
+        this.selectedText = text;
+        this.input.value = text;
+        this.hideDropdown();
+    }
+
+    getValue() {
+        return this.selectedValue;
+    }
+
+    setValue(value, text) {
+        this.selectedValue = value;
+        this.selectedText = text;
+        this.input.value = text;
+    }
+
+    updateOptions(newOptions) {
+        this.options = newOptions;
+        if (this.dropdown.classList.contains('active')) {
+            this.renderOptions(newOptions);
+        }
+    }
+
+    reset() {
+        this.selectedValue = '';
+        this.selectedText = '';
+        this.input.value = '';
+    }
 }
