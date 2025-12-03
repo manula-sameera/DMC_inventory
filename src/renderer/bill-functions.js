@@ -113,19 +113,13 @@ function addIncomingItemRow(item = null) {
     const tbody = document.getElementById('billItemsBody');
     const row = document.createElement('tr');
     const rowId = 'row_' + Date.now() + Math.random();
+    const selectId = 'itemSelect_' + rowId;
     row.id = rowId;
-
-    const itemOptions = currentData.items
-        .filter(i => i.Status === 'Active')
-        .map(i => `<option value="${i.Item_ID}">${escapeHtml(i.Item_Name)} (${escapeHtml(i.Unit_Measure)})</option>`)
-        .join('');
+    row.setAttribute('data-select-id', selectId);
 
     row.innerHTML = `
         <td>
-            <select class="item-select" required>
-                <option value="">Select Item...</option>
-                ${itemOptions}
-            </select>
+            <div id="${selectId}" class="item-select-container"></div>
         </td>
         <td>
             <input type="number" class="item-quantity" min="1" value="${item ? item.Qty_Received : ''}" required>
@@ -138,11 +132,25 @@ function addIncomingItemRow(item = null) {
         </td>
     `;
 
-    if (item) {
-        row.querySelector('.item-select').value = item.Item_ID;
-    }
-
     tbody.appendChild(row);
+    
+    // Create searchable select after row is in DOM
+    const itemOptions = currentData.items
+        .filter(i => i.Status === 'Active')
+        .map(i => ({
+            value: i.Item_ID.toString(),
+            text: `${i.Item_Name} (${i.Unit_Measure})`
+        }));
+    
+    const searchableSelect = new SearchableSelect(selectId, itemOptions, 'Search items...');
+    
+    if (item) {
+        searchableSelect.setValue(item.Item_ID.toString());
+    }
+    
+    // Store reference for later retrieval
+    row.searchableSelect = searchableSelect;
+    
     updateItemCount();
 }
 
@@ -177,7 +185,7 @@ async function handleIncomingBillSubmit(e) {
     }
 
     for (const row of rows) {
-        const itemId = row.querySelector('.item-select').value;
+        const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
         const quantity = parseInt(row.querySelector('.item-quantity').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
 
@@ -353,7 +361,7 @@ async function handleIncomingBillUpdate(e) {
     }
 
     for (const row of rows) {
-        const itemId = row.querySelector('.item-select').value;
+        const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
         const quantity = parseInt(row.querySelector('.item-quantity').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
 
@@ -521,19 +529,13 @@ function addDonationItemRow(item = null) {
     const tbody = document.getElementById('billItemsBody');
     const row = document.createElement('tr');
     const rowId = 'row_' + Date.now() + Math.random();
+    const selectId = 'itemSelect_' + rowId;
     row.id = rowId;
-
-    const itemOptions = currentData.items
-        .filter(i => i.Status === 'Active')
-        .map(i => `<option value="${i.Item_ID}">${escapeHtml(i.Item_Name)} (${escapeHtml(i.Unit_Measure)})</option>`)
-        .join('');
+    row.setAttribute('data-select-id', selectId);
 
     row.innerHTML = `
         <td>
-            <select class="item-select" required>
-                <option value="">Select Item...</option>
-                ${itemOptions}
-            </select>
+            <div id="${selectId}" class="item-select-container"></div>
         </td>
         <td>
             <input type="number" class="item-quantity" min="1" value="${item ? item.Qty_Received : ''}" required>
@@ -546,11 +548,25 @@ function addDonationItemRow(item = null) {
         </td>
     `;
 
-    if (item) {
-        row.querySelector('.item-select').value = item.Item_ID;
-    }
-
     tbody.appendChild(row);
+    
+    // Create searchable select after row is in DOM
+    const itemOptions = currentData.items
+        .filter(i => i.Status === 'Active')
+        .map(i => ({
+            value: i.Item_ID.toString(),
+            text: `${i.Item_Name} (${i.Unit_Measure})`
+        }));
+    
+    const searchableSelect = new SearchableSelect(selectId, itemOptions, 'Search items...');
+    
+    if (item) {
+        searchableSelect.setValue(item.Item_ID.toString());
+    }
+    
+    // Store reference for later retrieval
+    row.searchableSelect = searchableSelect;
+    
     updateItemCount();
 }
 
@@ -572,7 +588,7 @@ async function handleDonationBillSubmit(e) {
     }
 
     for (const row of rows) {
-        const itemId = row.querySelector('.item-select').value;
+        const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
         const quantity = parseInt(row.querySelector('.item-quantity').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
 
@@ -748,7 +764,7 @@ async function handleDonationBillUpdate(e) {
     }
 
     for (const row of rows) {
-        const itemId = row.querySelector('.item-select').value;
+        const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
         const quantity = parseInt(row.querySelector('.item-quantity').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
 
@@ -933,19 +949,13 @@ function addOutgoingItemRow(item = null) {
     const tbody = document.getElementById('billItemsBody');
     const row = document.createElement('tr');
     const rowId = 'row_' + Date.now() + Math.random();
+    const selectId = 'itemSelect_' + rowId;
     row.id = rowId;
-
-    const itemOptions = currentData.items
-        .filter(i => i.Status === 'Active')
-        .map(i => `<option value="${i.Item_ID}">${escapeHtml(i.Item_Name)} (${escapeHtml(i.Unit_Measure)})</option>`)
-        .join('');
+    row.setAttribute('data-select-id', selectId);
 
     row.innerHTML = `
         <td>
-            <select class="item-select" required>
-                <option value="">Select Item...</option>
-                ${itemOptions}
-            </select>
+            <div id="${selectId}" class="item-select-container"></div>
         </td>
         <td>
             <input type="number" class="item-requested" min="1" value="${item ? item.Qty_Requested : ''}" required>
@@ -961,11 +971,25 @@ function addOutgoingItemRow(item = null) {
         </td>
     `;
 
-    if (item) {
-        row.querySelector('.item-select').value = item.Item_ID;
-    }
-
     tbody.appendChild(row);
+    
+    // Create searchable select after row is in DOM
+    const itemOptions = currentData.items
+        .filter(i => i.Status === 'Active')
+        .map(i => ({
+            value: i.Item_ID.toString(),
+            text: `${i.Item_Name} (${i.Unit_Measure})`
+        }));
+    
+    const searchableSelect = new SearchableSelect(selectId, itemOptions, 'Search items...');
+    
+    if (item) {
+        searchableSelect.setValue(item.Item_ID.toString());
+    }
+    
+    // Store reference for later retrieval
+    row.searchableSelect = searchableSelect;
+    
     updateItemCount();
 }
 
@@ -995,7 +1019,7 @@ async function handleOutgoingBillSubmit(e) {
     }
 
     for (const row of rows) {
-        const itemId = row.querySelector('.item-select').value;
+        const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
         const requested = parseInt(row.querySelector('.item-requested').value);
         const issued = parseInt(row.querySelector('.item-issued').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
@@ -1205,7 +1229,7 @@ async function handleOutgoingBillUpdate(e) {
     }
 
     for (const row of rows) {
-        const itemId = row.querySelector('.item-select').value;
+        const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
         const requested = parseInt(row.querySelector('.item-requested').value);
         const issued = parseInt(row.querySelector('.item-issued').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
