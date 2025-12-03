@@ -3,7 +3,6 @@ const path = require('path');
 const fs = require('fs');
 const db = require('./database/db');
 const pdfGenerator = require('./reports/pdfGenerator');
-const DatabaseMigration = require('./database/migration');
 
 let mainWindow;
 
@@ -25,40 +24,8 @@ function createWindow() {
     // mainWindow.webContents.openDevTools();
 }
 
-async function checkAndMigrate() {
-    try {
-        const userDataPath = app.getPath('userData');
-        const dbPath = path.join(userDataPath, 'dmc_inventory.db');
-        
-        // Only check migration if database file exists
-        if (fs.existsSync(dbPath)) {
-            const migration = new DatabaseMigration(dbPath);
-            
-            if (migration.needsMigration()) {
-                console.log('Database migration required...');
-                const result = migration.runMigration();
-                
-                if (result.success) {
-                    console.log('Migration completed successfully!');
-                    console.log('Backup saved to:', result.backup);
-                    console.log('Verification:', result.verification);
-                } else {
-                    throw new Error('Migration failed: ' + result.error);
-                }
-            } else {
-                console.log('Database is up to date, no migration needed.');
-            }
-        }
-    } catch (error) {
-        console.error('Migration check failed:', error);
-        throw error;
-    }
-}
-
 app.whenReady().then(async () => {
     try {
-        // Check and run migration if needed before initializing database
-        await checkAndMigrate();
         
         db.initialize();
         createWindow();
