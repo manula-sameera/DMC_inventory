@@ -107,113 +107,388 @@ class DatabaseManager {
         return stmt.run('Inactive', centerId);
     }
 
-    // Incoming Stock Methods
+    // Incoming Stock Bills Methods
+    getAllIncomingBills() {
+        const stmt = this.db.prepare(`
+            SELECT 
+                ib.*,
+                COUNT(ist.GRN_ID) as Item_Count,
+                SUM(ist.Qty_Received) as Total_Quantity
+            FROM INCOMING_BILLS ib
+            LEFT JOIN INCOMING_STOCK ist ON ib.Bill_ID = ist.Bill_ID
+            GROUP BY ib.Bill_ID
+            ORDER BY ib.Date_Received DESC, ib.Bill_ID DESC
+        `);
+        return stmt.all();
+    }
+
+    getIncomingBillDetails(billId) {
+        const billStmt = this.db.prepare('SELECT * FROM INCOMING_BILLS WHERE Bill_ID = ?');
+        const bill = billStmt.get(billId);
+        
+        if (bill) {
+            const itemsStmt = this.db.prepare(`
+                SELECT ist.*, im.Item_Name, im.Unit_Measure
+                FROM INCOMING_STOCK ist
+                JOIN ITEMS_MASTER im ON ist.Item_ID = im.Item_ID
+                WHERE ist.Bill_ID = ?
+            `);
+            bill.items = itemsStmt.all(billId);
+        }
+        
+        return bill;
+    }
+
+    addIncomingBill(billData) {
+        const transaction = this.db.transaction((data) => {
+            // Generate bill number if not provided
+            if (!data.Bill_Number) {
+                const prefix = 'GRN';
+                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM INCOMING_BILLS WHERE Date_Received = ?');
+                const { count } = countStmt.get(data.Date_Received);
+                data.Bill_Number = `${prefix}-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+            }
+
+            // Insert bill header
+            const billStmt = this.db.prepare(`
+                INSERT INTO INCOMING_BILLS (Bill_Number, Date_Received, Supplier_Name, Remarks)
+                VALUES (?, ?, ?, ?)
+            `);
+            const billResult = billStmt.run(data.Bill_Number, data.Date_Received, data.Supplier_Name, data.Remarks || null);
+            const billId = billResult.lastInsertRowid;
+
+            // Insert bill items
+            const itemStmt = this.db.prepare(`
+                INSERT INTO INCOMING_STOCK (Bill_ID, Item_ID, Qty_Received, Item_Remarks)
+                VALUES (?, ?, ?, ?)
+            `);
+
+            for (const item of data.items) {
+                itemStmt.run(billId, item.Item_ID, item.Qty_Received, item.Item_Remarks || null);
+            }
+
+            return billId;
+        });
+
+        return transaction(billData);
+    }
+
+    updateIncomingBill(billId, billData) {
+        const transaction = this.db.transaction((id, data) => {
+            // Update bill header
+            const billStmt = this.db.prepare(`
+                UPDATE INCOMING_BILLS
+                SET Date_Received = ?, Supplier_Name = ?, Remarks = ?, Modified_Date = CURRENT_TIMESTAMP
+                WHERE Bill_ID = ?
+            `);
+            billStmt.run(data.Date_Received, data.Supplier_Name, data.Remarks || null, id);
+
+            // Delete existing items
+            const deleteStmt = this.db.prepare('DELETE FROM INCOMING_STOCK WHERE Bill_ID = ?');
+            deleteStmt.run(id);
+
+            // Insert new items
+            const itemStmt = this.db.prepare(`
+                INSERT INTO INCOMING_STOCK (Bill_ID, Item_ID, Qty_Received, Item_Remarks)
+                VALUES (?, ?, ?, ?)
+            `);
+
+            for (const item of data.items) {
+                itemStmt.run(id, item.Item_ID, item.Qty_Received, item.Item_Remarks || null);
+            }
+        });
+
+        return transaction(billId, billData);
+    }
+
+    deleteIncomingBill(billId) {
+        const stmt = this.db.prepare('DELETE FROM INCOMING_BILLS WHERE Bill_ID = ?');
+        return stmt.run(billId);
+    }
+
+    // Legacy method for compatibility - gets all individual items
     getAllIncomingStock() {
         const stmt = this.db.prepare(`
-            SELECT i.*, im.Item_Name, im.Unit_Measure 
-            FROM INCOMING_STOCK i
-            JOIN ITEMS_MASTER im ON i.Item_ID = im.Item_ID
-            ORDER BY i.Date_Received DESC, i.GRN_ID DESC
+            SELECT 
+                ist.GRN_ID,
+                ib.Date_Received,
+                ist.Item_ID,
+                im.Item_Name,
+                im.Unit_Measure,
+                ib.Supplier_Name,
+                ist.Qty_Received,
+                ib.Bill_Number,
+                ist.Item_Remarks,
+                ib.Remarks
+            FROM INCOMING_STOCK ist
+            JOIN INCOMING_BILLS ib ON ist.Bill_ID = ib.Bill_ID
+            JOIN ITEMS_MASTER im ON ist.Item_ID = im.Item_ID
+            ORDER BY ib.Date_Received DESC, ist.GRN_ID DESC
         `);
         return stmt.all();
     }
 
-    addIncomingStock(stock) {
+    // Donation Bills Methods
+    getAllDonationBills() {
         const stmt = this.db.prepare(`
-            INSERT INTO INCOMING_STOCK (Date_Received, Item_ID, Supplier_Name, Qty_Received, Remarks)
-            VALUES (?, ?, ?, ?, ?)
+            SELECT 
+                db.*,
+                COUNT(d.Donation_ID) as Item_Count,
+                SUM(d.Qty_Received) as Total_Quantity
+            FROM DONATION_BILLS db
+            LEFT JOIN DONATIONS d ON db.Bill_ID = d.Bill_ID
+            GROUP BY db.Bill_ID
+            ORDER BY db.Date_Received DESC, db.Bill_ID DESC
         `);
-        return stmt.run(stock.Date_Received, stock.Item_ID, stock.Supplier_Name, stock.Qty_Received, stock.Remarks || null);
+        return stmt.all();
     }
 
-    updateIncomingStock(grnId, stock) {
-        const stmt = this.db.prepare(`
-            UPDATE INCOMING_STOCK
-            SET Date_Received = ?, Item_ID = ?, Supplier_Name = ?, Qty_Received = ?, Remarks = ?
-            WHERE GRN_ID = ?
-        `);
-        return stmt.run(stock.Date_Received, stock.Item_ID, stock.Supplier_Name, stock.Qty_Received, stock.Remarks || null, grnId);
+    getDonationBillDetails(billId) {
+        const billStmt = this.db.prepare('SELECT * FROM DONATION_BILLS WHERE Bill_ID = ?');
+        const bill = billStmt.get(billId);
+        
+        if (bill) {
+            const itemsStmt = this.db.prepare(`
+                SELECT d.*, im.Item_Name, im.Unit_Measure
+                FROM DONATIONS d
+                JOIN ITEMS_MASTER im ON d.Item_ID = im.Item_ID
+                WHERE d.Bill_ID = ?
+            `);
+            bill.items = itemsStmt.all(billId);
+        }
+        
+        return bill;
     }
 
-    deleteIncomingStock(grnId) {
-        const stmt = this.db.prepare('DELETE FROM INCOMING_STOCK WHERE GRN_ID = ?');
-        return stmt.run(grnId);
+    addDonationBill(billData) {
+        const transaction = this.db.transaction((data) => {
+            // Generate bill number if not provided
+            if (!data.Bill_Number) {
+                const prefix = 'DON';
+                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM DONATION_BILLS WHERE Date_Received = ?');
+                const { count } = countStmt.get(data.Date_Received);
+                data.Bill_Number = `${prefix}-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+            }
+
+            // Insert bill header
+            const billStmt = this.db.prepare(`
+                INSERT INTO DONATION_BILLS (Bill_Number, Date_Received, Donor_Name, Remarks)
+                VALUES (?, ?, ?, ?)
+            `);
+            const billResult = billStmt.run(data.Bill_Number, data.Date_Received, data.Donor_Name, data.Remarks || null);
+            const billId = billResult.lastInsertRowid;
+
+            // Insert bill items
+            const itemStmt = this.db.prepare(`
+                INSERT INTO DONATIONS (Bill_ID, Item_ID, Qty_Received, Item_Remarks)
+                VALUES (?, ?, ?, ?)
+            `);
+
+            for (const item of data.items) {
+                itemStmt.run(billId, item.Item_ID, item.Qty_Received, item.Item_Remarks || null);
+            }
+
+            return billId;
+        });
+
+        return transaction(billData);
     }
 
-    // Donations Methods
+    updateDonationBill(billId, billData) {
+        const transaction = this.db.transaction((id, data) => {
+            // Update bill header
+            const billStmt = this.db.prepare(`
+                UPDATE DONATION_BILLS
+                SET Date_Received = ?, Donor_Name = ?, Remarks = ?, Modified_Date = CURRENT_TIMESTAMP
+                WHERE Bill_ID = ?
+            `);
+            billStmt.run(data.Date_Received, data.Donor_Name, data.Remarks || null, id);
+
+            // Delete existing items
+            const deleteStmt = this.db.prepare('DELETE FROM DONATIONS WHERE Bill_ID = ?');
+            deleteStmt.run(id);
+
+            // Insert new items
+            const itemStmt = this.db.prepare(`
+                INSERT INTO DONATIONS (Bill_ID, Item_ID, Qty_Received, Item_Remarks)
+                VALUES (?, ?, ?, ?)
+            `);
+
+            for (const item of data.items) {
+                itemStmt.run(id, item.Item_ID, item.Qty_Received, item.Item_Remarks || null);
+            }
+        });
+
+        return transaction(billId, billData);
+    }
+
+    deleteDonationBill(billId) {
+        const stmt = this.db.prepare('DELETE FROM DONATION_BILLS WHERE Bill_ID = ?');
+        return stmt.run(billId);
+    }
+
+    // Legacy method for compatibility - gets all individual items
     getAllDonations() {
         const stmt = this.db.prepare(`
-            SELECT d.*, im.Item_Name, im.Unit_Measure 
+            SELECT 
+                d.Donation_ID,
+                db.Date_Received,
+                d.Item_ID,
+                im.Item_Name,
+                im.Unit_Measure,
+                db.Donor_Name,
+                d.Qty_Received,
+                db.Bill_Number,
+                d.Item_Remarks,
+                db.Remarks
             FROM DONATIONS d
+            JOIN DONATION_BILLS db ON d.Bill_ID = db.Bill_ID
             JOIN ITEMS_MASTER im ON d.Item_ID = im.Item_ID
-            ORDER BY d.Date_Received DESC, d.Donation_ID DESC
+            ORDER BY db.Date_Received DESC, d.Donation_ID DESC
         `);
         return stmt.all();
     }
 
-    addDonation(donation) {
+    // Outgoing Stock Bills Methods
+    getAllOutgoingBills() {
         const stmt = this.db.prepare(`
-            INSERT INTO DONATIONS (Date_Received, Item_ID, Donor_Name, Qty_Received, Remarks)
-            VALUES (?, ?, ?, ?, ?)
+            SELECT 
+                ob.*,
+                c.Center_Name,
+                c.District,
+                COUNT(ost.Dispatch_ID) as Item_Count,
+                SUM(ost.Qty_Issued) as Total_Quantity
+            FROM OUTGOING_BILLS ob
+            JOIN CENTERS_MASTER c ON ob.Center_ID = c.Center_ID
+            LEFT JOIN OUTGOING_STOCK ost ON ob.Bill_ID = ost.Bill_ID
+            GROUP BY ob.Bill_ID
+            ORDER BY ob.Date_Issued DESC, ob.Bill_ID DESC
         `);
-        return stmt.run(donation.Date_Received, donation.Item_ID, donation.Donor_Name, donation.Qty_Received, donation.Remarks || null);
+        return stmt.all();
     }
 
-    updateDonation(donationId, donation) {
-        const stmt = this.db.prepare(`
-            UPDATE DONATIONS
-            SET Date_Received = ?, Item_ID = ?, Donor_Name = ?, Qty_Received = ?, Remarks = ?
-            WHERE Donation_ID = ?
+    getOutgoingBillDetails(billId) {
+        const billStmt = this.db.prepare(`
+            SELECT ob.*, c.Center_Name, c.District
+            FROM OUTGOING_BILLS ob
+            JOIN CENTERS_MASTER c ON ob.Center_ID = c.Center_ID
+            WHERE ob.Bill_ID = ?
         `);
-        return stmt.run(donation.Date_Received, donation.Item_ID, donation.Donor_Name, donation.Qty_Received, donation.Remarks || null, donationId);
+        const bill = billStmt.get(billId);
+        
+        if (bill) {
+            const itemsStmt = this.db.prepare(`
+                SELECT ost.*, im.Item_Name, im.Unit_Measure
+                FROM OUTGOING_STOCK ost
+                JOIN ITEMS_MASTER im ON ost.Item_ID = im.Item_ID
+                WHERE ost.Bill_ID = ?
+            `);
+            bill.items = itemsStmt.all(billId);
+        }
+        
+        return bill;
     }
 
-    deleteDonation(donationId) {
-        const stmt = this.db.prepare('DELETE FROM DONATIONS WHERE Donation_ID = ?');
-        return stmt.run(donationId);
+    addOutgoingBill(billData) {
+        const transaction = this.db.transaction((data) => {
+            // Generate bill number if not provided
+            if (!data.Bill_Number) {
+                const prefix = 'DSP';
+                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM OUTGOING_BILLS WHERE Date_Issued = ?');
+                const { count } = countStmt.get(data.Date_Issued);
+                data.Bill_Number = `${prefix}-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+            }
+
+            // Insert bill header
+            const billStmt = this.db.prepare(`
+                INSERT INTO OUTGOING_BILLS (Bill_Number, Date_Issued, Center_ID, Officer_Name, Officer_NIC, Remarks)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `);
+            const billResult = billStmt.run(
+                data.Bill_Number, data.Date_Issued, data.Center_ID, 
+                data.Officer_Name, data.Officer_NIC, data.Remarks || null
+            );
+            const billId = billResult.lastInsertRowid;
+
+            // Insert bill items
+            const itemStmt = this.db.prepare(`
+                INSERT INTO OUTGOING_STOCK (Bill_ID, Item_ID, Qty_Requested, Qty_Issued, Item_Remarks)
+                VALUES (?, ?, ?, ?, ?)
+            `);
+
+            for (const item of data.items) {
+                itemStmt.run(billId, item.Item_ID, item.Qty_Requested, item.Qty_Issued, item.Item_Remarks || null);
+            }
+
+            return billId;
+        });
+
+        return transaction(billData);
     }
 
-    // Outgoing Stock Methods
+    updateOutgoingBill(billId, billData) {
+        const transaction = this.db.transaction((id, data) => {
+            // Update bill header
+            const billStmt = this.db.prepare(`
+                UPDATE OUTGOING_BILLS
+                SET Date_Issued = ?, Center_ID = ?, Officer_Name = ?, Officer_NIC = ?, 
+                    Remarks = ?, Modified_Date = CURRENT_TIMESTAMP
+                WHERE Bill_ID = ?
+            `);
+            billStmt.run(data.Date_Issued, data.Center_ID, data.Officer_Name, data.Officer_NIC, data.Remarks || null, id);
+
+            // Delete existing items
+            const deleteStmt = this.db.prepare('DELETE FROM OUTGOING_STOCK WHERE Bill_ID = ?');
+            deleteStmt.run(id);
+
+            // Insert new items
+            const itemStmt = this.db.prepare(`
+                INSERT INTO OUTGOING_STOCK (Bill_ID, Item_ID, Qty_Requested, Qty_Issued, Item_Remarks)
+                VALUES (?, ?, ?, ?, ?)
+            `);
+
+            for (const item of data.items) {
+                itemStmt.run(id, item.Item_ID, item.Qty_Requested, item.Qty_Issued, item.Item_Remarks || null);
+            }
+        });
+
+        return transaction(billId, billData);
+    }
+
+    deleteOutgoingBill(billId) {
+        const stmt = this.db.prepare('DELETE FROM OUTGOING_BILLS WHERE Bill_ID = ?');
+        return stmt.run(billId);
+    }
+
+    // Legacy method for compatibility - gets all individual items
     getAllOutgoingStock() {
         const stmt = this.db.prepare(`
-            SELECT o.*, im.Item_Name, im.Unit_Measure, c.Center_Name, c.District
-            FROM OUTGOING_STOCK o
-            JOIN ITEMS_MASTER im ON o.Item_ID = im.Item_ID
-            JOIN CENTERS_MASTER c ON o.Center_ID = c.Center_ID
-            ORDER BY o.Date_Issued DESC, o.Dispatch_ID DESC
+            SELECT 
+                ost.Dispatch_ID,
+                ob.Date_Issued,
+                ob.Center_ID,
+                c.Center_Name,
+                c.District,
+                ost.Item_ID,
+                im.Item_Name,
+                im.Unit_Measure,
+                ost.Qty_Requested,
+                ost.Qty_Issued,
+                ob.Officer_Name,
+                ob.Officer_NIC,
+                ob.Bill_Number,
+                ost.Item_Remarks,
+                ob.Remarks
+            FROM OUTGOING_STOCK ost
+            JOIN OUTGOING_BILLS ob ON ost.Bill_ID = ob.Bill_ID
+            JOIN ITEMS_MASTER im ON ost.Item_ID = im.Item_ID
+            JOIN CENTERS_MASTER c ON ob.Center_ID = c.Center_ID
+            ORDER BY ob.Date_Issued DESC, ost.Dispatch_ID DESC
         `);
         return stmt.all();
-    }
-
-    addOutgoingStock(stock) {
-        const stmt = this.db.prepare(`
-            INSERT INTO OUTGOING_STOCK (Date_Issued, Center_ID, Item_ID, Qty_Requested, Qty_Issued, Officer_Name, Officer_NIC, Remarks)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        return stmt.run(
-            stock.Date_Issued, stock.Center_ID, stock.Item_ID, 
-            stock.Qty_Requested, stock.Qty_Issued, stock.Officer_Name, 
-            stock.Officer_NIC, stock.Remarks || null
-        );
-    }
-
-    updateOutgoingStock(dispatchId, stock) {
-        const stmt = this.db.prepare(`
-            UPDATE OUTGOING_STOCK
-            SET Date_Issued = ?, Center_ID = ?, Item_ID = ?, Qty_Requested = ?, Qty_Issued = ?, 
-                Officer_Name = ?, Officer_NIC = ?, Remarks = ?
-            WHERE Dispatch_ID = ?
-        `);
-        return stmt.run(
-            stock.Date_Issued, stock.Center_ID, stock.Item_ID, 
-            stock.Qty_Requested, stock.Qty_Issued, stock.Officer_Name, 
-            stock.Officer_NIC, stock.Remarks || null, dispatchId
-        );
-    }
-
-    deleteOutgoingStock(dispatchId) {
-        const stmt = this.db.prepare('DELETE FROM OUTGOING_STOCK WHERE Dispatch_ID = ?');
-        return stmt.run(dispatchId);
     }
 
     // Current Stock Methods
@@ -230,20 +505,28 @@ class DatabaseManager {
     // Report Methods
     getItemHistory(itemId) {
         const incoming = this.db.prepare(`
-            SELECT 'Incoming' as Type, Date_Received as Date, Supplier_Name as Source, Qty_Received as Quantity
-            FROM INCOMING_STOCK WHERE Item_ID = ?
+            SELECT 'Incoming' as Type, ib.Date_Received as Date, ib.Supplier_Name as Source, 
+                   ist.Qty_Received as Quantity, ib.Bill_Number
+            FROM INCOMING_STOCK ist
+            JOIN INCOMING_BILLS ib ON ist.Bill_ID = ib.Bill_ID
+            WHERE ist.Item_ID = ?
         `).all(itemId);
 
         const donations = this.db.prepare(`
-            SELECT 'Donation' as Type, Date_Received as Date, Donor_Name as Source, Qty_Received as Quantity
-            FROM DONATIONS WHERE Item_ID = ?
+            SELECT 'Donation' as Type, db.Date_Received as Date, db.Donor_Name as Source, 
+                   d.Qty_Received as Quantity, db.Bill_Number
+            FROM DONATIONS d
+            JOIN DONATION_BILLS db ON d.Bill_ID = db.Bill_ID
+            WHERE d.Item_ID = ?
         `).all(itemId);
 
         const outgoing = this.db.prepare(`
-            SELECT 'Outgoing' as Type, Date_Issued as Date, 
-                   (SELECT Center_Name FROM CENTERS_MASTER WHERE Center_ID = o.Center_ID) as Source, 
-                   Qty_Issued as Quantity
-            FROM OUTGOING_STOCK o WHERE Item_ID = ?
+            SELECT 'Outgoing' as Type, ob.Date_Issued as Date, c.Center_Name as Source, 
+                   ost.Qty_Issued as Quantity, ob.Bill_Number
+            FROM OUTGOING_STOCK ost
+            JOIN OUTGOING_BILLS ob ON ost.Bill_ID = ob.Bill_ID
+            JOIN CENTERS_MASTER c ON ob.Center_ID = c.Center_ID
+            WHERE ost.Item_ID = ?
         `).all(itemId);
 
         return [...incoming, ...donations, ...outgoing].sort((a, b) => new Date(b.Date) - new Date(a.Date));
@@ -288,37 +571,39 @@ class DatabaseManager {
     getIncomingStockReport(dateFrom, dateTo, itemIds = null) {
         let query = `
             SELECT 
-                inc.GRN_ID,
-                inc.Date_Received as Received_Date,
+                ib.Bill_Number,
+                ib.Date_Received as Received_Date,
                 i.Item_Name,
                 i.Unit_Measure,
-                inc.Qty_Received as Quantity,
-                inc.Supplier_Name as Source_Name,
-                inc.Remarks
-            FROM INCOMING_STOCK inc
-            JOIN ITEMS_MASTER i ON inc.Item_ID = i.Item_ID
+                ist.Qty_Received as Quantity,
+                ib.Supplier_Name as Source_Name,
+                ist.Item_Remarks,
+                ib.Remarks as Bill_Remarks
+            FROM INCOMING_STOCK ist
+            JOIN INCOMING_BILLS ib ON ist.Bill_ID = ib.Bill_ID
+            JOIN ITEMS_MASTER i ON ist.Item_ID = i.Item_ID
             WHERE 1=1
         `;
         
         const params = [];
         
         if (dateFrom) {
-            query += ` AND DATE(inc.Date_Received) >= DATE(?)`;
+            query += ` AND DATE(ib.Date_Received) >= DATE(?)`;
             params.push(dateFrom);
         }
         
         if (dateTo) {
-            query += ` AND DATE(inc.Date_Received) <= DATE(?)`;
+            query += ` AND DATE(ib.Date_Received) <= DATE(?)`;
             params.push(dateTo);
         }
         
         if (itemIds && itemIds.length > 0) {
             const placeholders = itemIds.map(() => '?').join(',');
-            query += ` AND inc.Item_ID IN (${placeholders})`;
+            query += ` AND ist.Item_ID IN (${placeholders})`;
             params.push(...itemIds);
         }
         
-        query += ` ORDER BY inc.Date_Received DESC, i.Item_Name`;
+        query += ` ORDER BY ib.Date_Received DESC, ib.Bill_Number, i.Item_Name`;
         
         const stmt = this.db.prepare(query);
         return stmt.all(...params);
@@ -327,38 +612,43 @@ class DatabaseManager {
     getOutgoingStockReport(dateFrom, dateTo, itemIds = null) {
         let query = `
             SELECT 
-                out.Dispatch_ID,
-                out.Date_Issued as Dispatch_Date,
+                ob.Bill_Number,
+                ob.Date_Issued as Dispatch_Date,
                 i.Item_Name,
                 i.Unit_Measure,
-                out.Qty_Issued as Quantity,
+                ost.Qty_Requested,
+                ost.Qty_Issued as Quantity,
                 c.Center_Name,
-                out.Remarks
-            FROM OUTGOING_STOCK out
-            JOIN ITEMS_MASTER i ON out.Item_ID = i.Item_ID
-            LEFT JOIN CENTERS_MASTER c ON out.Center_ID = c.Center_ID
+                ob.Officer_Name,
+                ob.Officer_NIC,
+                ost.Item_Remarks,
+                ob.Remarks as Bill_Remarks
+            FROM OUTGOING_STOCK ost
+            JOIN OUTGOING_BILLS ob ON ost.Bill_ID = ob.Bill_ID
+            JOIN ITEMS_MASTER i ON ost.Item_ID = i.Item_ID
+            JOIN CENTERS_MASTER c ON ob.Center_ID = c.Center_ID
             WHERE 1=1
         `;
         
         const params = [];
         
         if (dateFrom) {
-            query += ` AND DATE(out.Date_Issued) >= DATE(?)`;
+            query += ` AND DATE(ob.Date_Issued) >= DATE(?)`;
             params.push(dateFrom);
         }
         
         if (dateTo) {
-            query += ` AND DATE(out.Date_Issued) <= DATE(?)`;
+            query += ` AND DATE(ob.Date_Issued) <= DATE(?)`;
             params.push(dateTo);
         }
         
         if (itemIds && itemIds.length > 0) {
             const placeholders = itemIds.map(() => '?').join(',');
-            query += ` AND out.Item_ID IN (${placeholders})`;
+            query += ` AND ost.Item_ID IN (${placeholders})`;
             params.push(...itemIds);
         }
         
-        query += ` ORDER BY out.Date_Issued DESC, i.Item_Name`;
+        query += ` ORDER BY ob.Date_Issued DESC, ob.Bill_Number, i.Item_Name`;
         
         const stmt = this.db.prepare(query);
         return stmt.all(...params);
@@ -367,37 +657,39 @@ class DatabaseManager {
     getDonationsReport(dateFrom, dateTo, itemIds = null) {
         let query = `
             SELECT 
-                don.Donation_ID,
-                don.Date_Received as Donation_Date,
+                db.Bill_Number,
+                db.Date_Received as Donation_Date,
                 i.Item_Name,
                 i.Unit_Measure,
-                don.Qty_Received as Quantity,
-                don.Donor_Name,
-                don.Remarks as Donor_Contact
-            FROM DONATIONS don
-            JOIN ITEMS_MASTER i ON don.Item_ID = i.Item_ID
+                d.Qty_Received as Quantity,
+                db.Donor_Name,
+                d.Item_Remarks,
+                db.Remarks as Bill_Remarks
+            FROM DONATIONS d
+            JOIN DONATION_BILLS db ON d.Bill_ID = db.Bill_ID
+            JOIN ITEMS_MASTER i ON d.Item_ID = i.Item_ID
             WHERE 1=1
         `;
         
         const params = [];
         
         if (dateFrom) {
-            query += ` AND DATE(don.Date_Received) >= DATE(?)`;
+            query += ` AND DATE(db.Date_Received) >= DATE(?)`;
             params.push(dateFrom);
         }
         
         if (dateTo) {
-            query += ` AND DATE(don.Date_Received) <= DATE(?)`;
+            query += ` AND DATE(db.Date_Received) <= DATE(?)`;
             params.push(dateTo);
         }
         
         if (itemIds && itemIds.length > 0) {
             const placeholders = itemIds.map(() => '?').join(',');
-            query += ` AND don.Item_ID IN (${placeholders})`;
+            query += ` AND d.Item_ID IN (${placeholders})`;
             params.push(...itemIds);
         }
         
-        query += ` ORDER BY don.Date_Received DESC, i.Item_Name`;
+        query += ` ORDER BY db.Date_Received DESC, db.Bill_Number, i.Item_Name`;
         
         const stmt = this.db.prepare(query);
         return stmt.all(...params);

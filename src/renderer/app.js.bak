@@ -762,6 +762,467 @@ async function deleteIncomingStock(grnId) {
 // - All modal and CRUD operations for donations and outgoing bills
 
 // Database Import/Export
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No donation records</td></tr>';
+        return;
+    }
+
+    data.forEach(donation => {
+        const row = `
+            <tr>
+                <td>${donation.Donation_ID}</td>
+                <td>${formatDate(donation.Date_Received)}</td>
+                <td>${escapeHtml(donation.Item_Name)}</td>
+                <td>${escapeHtml(donation.Donor_Name)}</td>
+                <td><strong>${donation.Qty_Received}</strong></td>
+                <td>${escapeHtml(donation.Unit_Measure)}</td>
+                <td>${escapeHtml(donation.Remarks || '-')}</td>
+                <td class="actions">
+                    <button class="btn-icon btn-edit" onclick="showEditDonationModal(${donation.Donation_ID})" title="Edit">✏️</button>
+                    <button class="btn-icon btn-delete" onclick="deleteDonation(${donation.Donation_ID})" title="Delete">🗑️</button>
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+function showAddDonationModal() {
+    const modalBody = `
+        <form id="donationForm">
+            <div class="form-group">
+                <label>Date Received *</label>
+                <input type="date" id="dateReceived" value="${getCurrentDate()}" required>
+            </div>
+            <div class="form-group">
+                <label>Item *</label>
+                <div id="donationItemIdContainer"></div>
+            </div>
+            <div class="form-group">
+                <label>Donor Name *</label>
+                <input type="text" id="donorName" required>
+            </div>
+            <div class="form-group">
+                <label>Quantity Received *</label>
+                <input type="number" id="qtyReceived" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>Remarks</label>
+                <textarea id="remarks"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Donation</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Add Donation Record', modalBody);
+
+    // Load items if not already loaded
+    const loadItemsPromise = currentData.items.length === 0 ? 
+        window.api.items.getActive().then(items => { currentData.items = items; }) : 
+        Promise.resolve();
+
+    loadItemsPromise.then(() => {
+        const itemOptions = currentData.items
+            .filter(i => i.Status === 'Active')
+            .map(i => ({ 
+                value: i.Item_ID.toString(), 
+                text: `${i.Item_Name} (${i.Unit_Measure})` 
+            }));
+
+        const itemSelect = new SearchableSelect('donationItemIdContainer', itemOptions, 'Search items...');
+        window.currentDonationItemSelect = itemSelect;
+    });
+
+    document.getElementById('donationForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const itemId = window.currentDonationItemSelect ? window.currentDonationItemSelect.getValue() : '';
+        if (!itemId) {
+            showNotification('Please select an item', 'error');
+            return;
+        }
+        try {
+            await window.api.donations.add({
+                Date_Received: document.getElementById('dateReceived').value,
+                Item_ID: parseInt(itemId),
+                Donor_Name: document.getElementById('donorName').value,
+                Qty_Received: parseInt(document.getElementById('qtyReceived').value),
+                Remarks: document.getElementById('remarks').value || null
+            });
+            closeModal();
+            loadDonations();
+            showNotification('Donation added successfully', 'success');
+        } catch (error) {
+            showNotification('Failed to add donation: ' + error.message, 'error');
+        }
+    });
+}
+
+function showEditDonationModal(donationId) {
+    const donation = currentData.donations.find(d => d.Donation_ID === donationId);
+    if (!donation) {
+        showNotification('Record not found', 'error');
+        return;
+    }
+
+    const modalBody = `
+        <form id="editDonationForm">
+            <div class="form-group">
+                <label>Date Received *</label>
+                <input type="date" id="dateReceived" value="${donation.Date_Received.split('T')[0]}" required>
+            </div>
+            <div class="form-group">
+                <label>Item *</label>
+                <div id="donationItemIdContainer"></div>
+            </div>
+            <div class="form-group">
+                <label>Donor Name *</label>
+                <input type="text" id="donorName" value="${escapeHtml(donation.Donor_Name)}" required>
+            </div>
+            <div class="form-group">
+                <label>Quantity Received *</label>
+                <input type="number" id="qtyReceived" value="${donation.Qty_Received}" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>Remarks</label>
+                <textarea id="remarks">${escapeHtml(donation.Remarks || '')}</textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Donation</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Edit Donation Record', modalBody);
+
+    // Load all items for editing (not just active ones)
+    window.api.items.getAll().then(items => {
+        const itemOptions = items.map(i => ({ 
+            value: i.Item_ID.toString(), 
+            text: `${i.Item_Name} (${i.Unit_Measure})${i.Status === 'Inactive' ? ' [Inactive]' : ''}` 
+        }));
+
+        const itemSelect = new SearchableSelect('donationItemIdContainer', itemOptions, 'Search items...');
+        itemSelect.setValue(donation.Item_ID.toString());
+        window.currentDonationItemSelect = itemSelect;
+    });
+
+    document.getElementById('editDonationForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const itemId = window.currentDonationItemSelect ? window.currentDonationItemSelect.getValue() : '';
+        if (!itemId) {
+            showNotification('Please select an item', 'error');
+            return;
+        }
+        try {
+            await window.api.donations.update(donationId, {
+                Date_Received: document.getElementById('dateReceived').value,
+                Item_ID: parseInt(itemId),
+                Donor_Name: document.getElementById('donorName').value,
+                Qty_Received: parseInt(document.getElementById('qtyReceived').value),
+                Remarks: document.getElementById('remarks').value || null
+            });
+            closeModal();
+            loadDonations();
+            showNotification('Donation updated successfully', 'success');
+        } catch (error) {
+            showNotification('Failed to update donation: ' + error.message, 'error');
+        }
+    });
+}
+
+async function deleteDonation(donationId) {
+    if (!confirm('Are you sure you want to delete this donation record?')) {
+        return;
+    }
+    try {
+        await window.api.donations.delete(donationId);
+        loadDonations();
+        showNotification('Donation deleted successfully', 'success');
+    } catch (error) {
+        showNotification('Failed to delete donation: ' + error.message, 'error');
+    }
+}
+
+// Outgoing Stock Functions
+async function loadOutgoingStock() {
+    try {
+        const outgoing = await window.api.outgoing.getAll();
+        currentData.outgoing = outgoing;
+        renderOutgoingTable(outgoing);
+    } catch (error) {
+        console.error('Error loading outgoing stock:', error);
+        showNotification('Failed to load outgoing stock', 'error');
+    }
+}
+
+function renderOutgoingTable(data) {
+    const tbody = document.querySelector('#outgoing-table tbody');
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No dispatch records</td></tr>';
+        return;
+    }
+
+    data.forEach(stock => {
+        const row = `
+            <tr>
+                <td>${stock.Dispatch_ID}</td>
+                <td>${formatDate(stock.Date_Issued)}</td>
+                <td>${escapeHtml(stock.Center_Name)} - ${escapeHtml(stock.District)}</td>
+                <td>${escapeHtml(stock.Item_Name)}</td>
+                <td>${stock.Qty_Requested}</td>
+                <td><strong>${stock.Qty_Issued}</strong></td>
+                <td>${escapeHtml(stock.Officer_Name)}</td>
+                <td>${escapeHtml(stock.Officer_NIC)}</td>
+                <td class="actions">
+                    <button class="btn-icon btn-edit" onclick="showEditOutgoingModal(${stock.Dispatch_ID})" title="Edit">✏️</button>
+                    <button class="btn-icon btn-delete" onclick="deleteOutgoingStock(${stock.Dispatch_ID})" title="Delete">🗑️</button>
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+function showAddOutgoingModal() {
+    const modalBody = `
+        <form id="outgoingForm">
+            <div class="form-group">
+                <label>Date Issued *</label>
+                <input type="date" id="dateIssued" value="${getCurrentDate()}" required>
+            </div>
+            <div class="form-group">
+                <label>Center *</label>
+                <div id="centerIdContainer"></div>
+            </div>
+            <div class="form-group">
+                <label>Item *</label>
+                <div id="outgoingItemIdContainer"></div>
+            </div>
+            <div class="form-group">
+                <label>Quantity Requested *</label>
+                <input type="number" id="qtyRequested" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>Quantity Issued *</label>
+                <input type="number" id="qtyIssued" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Officer Name *</label>
+                <input type="text" id="officerName" required>
+            </div>
+            <div class="form-group">
+                <label>Officer NIC *</label>
+                <input type="text" id="officerNIC" required>
+            </div>
+            <div class="form-group">
+                <label>Remarks</label>
+                <textarea id="remarks"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Dispatch Stock</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Dispatch Stock', modalBody);
+
+    // Load items and centers if not already loaded
+    const loadPromise = (currentData.items.length === 0 || currentData.centers.length === 0) ?
+        Promise.all([
+            window.api.items.getActive(),
+            window.api.centers.getActive()
+        ]).then(([items, centers]) => {
+            currentData.items = items;
+            currentData.centers = centers;
+        }) : Promise.resolve();
+
+    loadPromise.then(() => {
+        const itemOptions = currentData.items
+            .filter(i => i.Status === 'Active')
+            .map(i => ({ 
+                value: i.Item_ID.toString(), 
+                text: `${i.Item_Name} (${i.Unit_Measure})` 
+            }));
+
+        const centerOptions = currentData.centers
+            .filter(c => c.Status === 'Active')
+            .map(c => ({ 
+                value: c.Center_ID.toString(), 
+                text: `${c.Center_Name} - ${c.District}` 
+            }));
+
+        const itemSelect = new SearchableSelect('outgoingItemIdContainer', itemOptions, 'Search items...');
+        const centerSelect = new SearchableSelect('centerIdContainer', centerOptions, 'Search centers...');
+        
+        window.currentOutgoingItemSelect = itemSelect;
+        window.currentCenterSelect = centerSelect;
+    });
+
+    document.getElementById('outgoingForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const itemId = window.currentOutgoingItemSelect ? window.currentOutgoingItemSelect.getValue() : '';
+        const centerId = window.currentCenterSelect ? window.currentCenterSelect.getValue() : '';
+        
+        if (!itemId) {
+            showNotification('Please select an item', 'error');
+            return;
+        }
+        if (!centerId) {
+            showNotification('Please select a center', 'error');
+            return;
+        }
+        
+        try {
+            await window.api.outgoing.add({
+                Date_Issued: document.getElementById('dateIssued').value,
+                Center_ID: parseInt(centerId),
+                Item_ID: parseInt(itemId),
+                Qty_Requested: parseInt(document.getElementById('qtyRequested').value),
+                Qty_Issued: parseInt(document.getElementById('qtyIssued').value),
+                Officer_Name: document.getElementById('officerName').value,
+                Officer_NIC: document.getElementById('officerNIC').value,
+                Remarks: document.getElementById('remarks').value || null
+            });
+            closeModal();
+            loadOutgoingStock();
+            showNotification('Stock dispatched successfully', 'success');
+        } catch (error) {
+            showNotification('Failed to dispatch stock: ' + error.message, 'error');
+        }
+    });
+}
+
+function showEditOutgoingModal(dispatchId) {
+    const stock = currentData.outgoing.find(s => s.Dispatch_ID === dispatchId);
+    if (!stock) {
+        showNotification('Record not found', 'error');
+        return;
+    }
+
+    const modalBody = `
+        <form id="editOutgoingForm">
+            <div class="form-group">
+                <label>Date Issued *</label>
+                <input type="date" id="dateIssued" value="${stock.Date_Issued.split('T')[0]}" required>
+            </div>
+            <div class="form-group">
+                <label>Center *</label>
+                <div id="centerIdContainer"></div>
+            </div>
+            <div class="form-group">
+                <label>Item *</label>
+                <div id="outgoingItemIdContainer"></div>
+            </div>
+            <div class="form-group">
+                <label>Quantity Requested *</label>
+                <input type="number" id="qtyRequested" value="${stock.Qty_Requested}" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>Quantity Issued *</label>
+                <input type="number" id="qtyIssued" value="${stock.Qty_Issued}" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Officer Name *</label>
+                <input type="text" id="officerName" value="${escapeHtml(stock.Officer_Name)}" required>
+            </div>
+            <div class="form-group">
+                <label>Officer NIC *</label>
+                <input type="text" id="officerNIC" value="${escapeHtml(stock.Officer_NIC)}" required>
+            </div>
+            <div class="form-group">
+                <label>Remarks</label>
+                <textarea id="remarks">${escapeHtml(stock.Remarks || '')}</textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Dispatch</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Edit Dispatch Record', modalBody);
+
+    // Load all items and centers for editing (not just active ones)
+    Promise.all([
+        window.api.items.getAll(),
+        window.api.centers.getAll()
+    ]).then(([items, centers]) => {
+        const itemOptions = items.map(i => ({ 
+            value: i.Item_ID.toString(), 
+            text: `${i.Item_Name} (${i.Unit_Measure})${i.Status === 'Inactive' ? ' [Inactive]' : ''}` 
+        }));
+
+        const centerOptions = centers.map(c => ({ 
+            value: c.Center_ID.toString(), 
+            text: `${c.Center_Name} - ${c.District}${c.Status === 'Inactive' ? ' [Inactive]' : ''}` 
+        }));
+
+        const itemSelect = new SearchableSelect('outgoingItemIdContainer', itemOptions, 'Search items...');
+        itemSelect.setValue(stock.Item_ID.toString());
+        const centerSelect = new SearchableSelect('centerIdContainer', centerOptions, 'Search centers...');
+        centerSelect.setValue(stock.Center_ID.toString());
+        
+        window.currentOutgoingItemSelect = itemSelect;
+        window.currentCenterSelect = centerSelect;
+    });
+
+    document.getElementById('editOutgoingForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const itemId = window.currentOutgoingItemSelect ? window.currentOutgoingItemSelect.getValue() : '';
+        const centerId = window.currentCenterSelect ? window.currentCenterSelect.getValue() : '';
+        
+        if (!itemId) {
+            showNotification('Please select an item', 'error');
+            return;
+        }
+        if (!centerId) {
+            showNotification('Please select a center', 'error');
+            return;
+        }
+        
+        try {
+            await window.api.outgoing.update(dispatchId, {
+                Date_Issued: document.getElementById('dateIssued').value,
+                Center_ID: parseInt(centerId),
+                Item_ID: parseInt(itemId),
+                Qty_Requested: parseInt(document.getElementById('qtyRequested').value),
+                Qty_Issued: parseInt(document.getElementById('qtyIssued').value),
+                Officer_Name: document.getElementById('officerName').value,
+                Officer_NIC: document.getElementById('officerNIC').value,
+                Remarks: document.getElementById('remarks').value || null
+            });
+            closeModal();
+            loadOutgoingStock();
+            showNotification('Dispatch record updated successfully', 'success');
+        } catch (error) {
+            showNotification('Failed to update dispatch record: ' + error.message, 'error');
+        }
+    });
+}
+
+async function deleteOutgoingStock(dispatchId) {
+    if (!confirm('Are you sure you want to delete this dispatch record?')) {
+        return;
+    }
+    try {
+        await window.api.outgoing.delete(dispatchId);
+        loadOutgoingStock();
+        showNotification('Dispatch record deleted successfully', 'success');
+    } catch (error) {
+        showNotification('Failed to delete dispatch record: ' + error.message, 'error');
+    }
+}
+
+// Database Import/Export
 async function exportDatabase() {
     try {
         const result = await window.api.database.export();
@@ -1054,4 +1515,3 @@ async function generateReport() {
         showNotification('Failed to generate report', 'error');
     }
 }
-

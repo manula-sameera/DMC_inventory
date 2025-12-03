@@ -1,0 +1,428 @@
+<!-- Example: Bill-Based Entry Modal for Incoming Stock -->
+<!-- Add this to your index.html or create as a separate component -->
+
+<!-- Modal for Adding/Editing Incoming Stock Bill -->
+<div id="incomingBillModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="incomingBillModalTitle">Add Incoming Stock (GRN)</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="incomingBillForm">
+                <!-- Bill Header Information -->
+                <div class="form-section">
+                    <h3>Bill Information</h3>
+                    <div class="form-group">
+                        <label for="incomingBillNumber">Bill Number</label>
+                        <input type="text" id="incomingBillNumber" readonly placeholder="Auto-generated">
+                    </div>
+                    <div class="form-group">
+                        <label for="incomingDate">Date Received *</label>
+                        <input type="date" id="incomingDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="incomingSupplier">Supplier Name *</label>
+                        <input type="text" id="incomingSupplier" required 
+                               placeholder="Enter supplier name" list="supplierList">
+                        <datalist id="supplierList">
+                            <!-- Populated dynamically from previous entries -->
+                        </datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="incomingRemarks">Remarks</label>
+                        <textarea id="incomingRemarks" rows="2" 
+                                  placeholder="General remarks for this bill"></textarea>
+                    </div>
+                </div>
+
+                <!-- Bill Items Section -->
+                <div class="form-section">
+                    <h3>Items <span class="item-count">(0 items)</span></h3>
+                    <div class="items-container">
+                        <table id="incomingItemsTable" class="items-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40%">Item</th>
+                                    <th style="width: 20%">Quantity *</th>
+                                    <th style="width: 30%">Remarks</th>
+                                    <th style="width: 10%">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incomingItemsBody">
+                                <!-- Item rows added dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" id="addIncomingItemBtn" class="btn btn-secondary">
+                        + Add Item
+                    </button>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="button" class="btn btn-cancel" id="cancelIncomingBillBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Bill</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Viewing Bill Details -->
+<div id="viewBillModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Bill Details</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="billDetailsContent">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Bill Entry Styles */
+.form-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.form-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-group input[readonly] {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+}
+
+.items-table th,
+.items-table td {
+    padding: 8px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+.items-table th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+}
+
+.items-table select,
+.items-table input {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+.btn-remove-item {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.btn-remove-item:hover {
+    background-color: #c82333;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.item-count {
+    font-size: 0.9em;
+    color: #666;
+    font-weight: normal;
+}
+
+.items-container {
+    max-height: 300px;
+    overflow-y: auto;
+}
+</style>
+
+<script>
+// Example JavaScript for Bill-Based Entry
+class IncomingBillManager {
+    constructor() {
+        this.items = [];
+        this.editingBillId = null;
+        this.availableItems = [];
+        this.init();
+    }
+
+    async init() {
+        // Load available items
+        this.availableItems = await window.api.items.getActive();
+        
+        // Setup event listeners
+        document.getElementById('addIncomingItemBtn').addEventListener('click', () => this.addItemRow());
+        document.getElementById('incomingBillForm').addEventListener('submit', (e) => this.handleSubmit(e));
+        document.getElementById('cancelIncomingBillBtn').addEventListener('click', () => this.closeModal());
+        
+        // Set default date to today
+        document.getElementById('incomingDate').valueAsDate = new Date();
+        
+        // Load previous suppliers for autocomplete
+        this.loadSupplierList();
+    }
+
+    async loadSupplierList() {
+        // Get unique suppliers from previous bills
+        const bills = await window.api.incoming.bills.getAll();
+        const suppliers = [...new Set(bills.map(b => b.Supplier_Name))];
+        
+        const datalist = document.getElementById('supplierList');
+        datalist.innerHTML = suppliers.map(s => `<option value="${s}">`).join('');
+    }
+
+    addItemRow(item = null) {
+        const row = document.createElement('tr');
+        const itemId = item ? item.Item_ID : '';
+        const quantity = item ? item.Qty_Received : '';
+        const remarks = item ? item.Item_Remarks || '' : '';
+
+        row.innerHTML = `
+            <td>
+                <select class="item-select" required>
+                    <option value="">Select Item...</option>
+                    ${this.availableItems.map(i => 
+                        `<option value="${i.Item_ID}" ${i.Item_ID == itemId ? 'selected' : ''}>
+                            ${i.Item_Name} (${i.Unit_Measure})
+                        </option>`
+                    ).join('')}
+                </select>
+            </td>
+            <td>
+                <input type="number" class="item-quantity" min="1" value="${quantity}" required>
+            </td>
+            <td>
+                <input type="text" class="item-remarks" value="${remarks}" placeholder="Optional">
+            </td>
+            <td>
+                <button type="button" class="btn-remove-item" onclick="this.closest('tr').remove(); incomingBillManager.updateItemCount();">
+                    Remove
+                </button>
+            </td>
+        `;
+
+        document.getElementById('incomingItemsBody').appendChild(row);
+        this.updateItemCount();
+    }
+
+    updateItemCount() {
+        const count = document.querySelectorAll('#incomingItemsBody tr').length;
+        document.querySelector('.item-count').textContent = `(${count} item${count !== 1 ? 's' : ''})`;
+    }
+
+    async handleSubmit(e) {
+        e.preventDefault();
+
+        // Collect bill data
+        const billData = {
+            Date_Received: document.getElementById('incomingDate').value,
+            Supplier_Name: document.getElementById('incomingSupplier').value.trim(),
+            Remarks: document.getElementById('incomingRemarks').value.trim() || null,
+            items: []
+        };
+
+        // Collect items
+        const rows = document.querySelectorAll('#incomingItemsBody tr');
+        if (rows.length === 0) {
+            alert('Please add at least one item to the bill.');
+            return;
+        }
+
+        for (const row of rows) {
+            const itemId = row.querySelector('.item-select').value;
+            const quantity = parseInt(row.querySelector('.item-quantity').value);
+            const remarks = row.querySelector('.item-remarks').value.trim() || null;
+
+            if (!itemId || !quantity || quantity <= 0) {
+                alert('Please fill all required item fields correctly.');
+                return;
+            }
+
+            billData.items.push({
+                Item_ID: parseInt(itemId),
+                Qty_Received: quantity,
+                Item_Remarks: remarks
+            });
+        }
+
+        // Save bill
+        try {
+            if (this.editingBillId) {
+                await window.api.incoming.bills.update(this.editingBillId, billData);
+                alert('Bill updated successfully!');
+            } else {
+                const billId = await window.api.incoming.bills.add(billData);
+                alert(`Bill created successfully! Bill ID: ${billId}`);
+            }
+            
+            this.closeModal();
+            this.refreshBillsList();
+        } catch (error) {
+            console.error('Error saving bill:', error);
+            alert('Error saving bill: ' + error.message);
+        }
+    }
+
+    async openModal(billId = null) {
+        this.editingBillId = billId;
+        
+        // Clear form
+        document.getElementById('incomingBillForm').reset();
+        document.getElementById('incomingItemsBody').innerHTML = '';
+        document.getElementById('incomingBillNumber').value = '';
+        
+        if (billId) {
+            // Load existing bill
+            const bill = await window.api.incoming.bills.getDetails(billId);
+            document.getElementById('incomingBillModalTitle').textContent = 'Edit Incoming Stock';
+            document.getElementById('incomingBillNumber').value = bill.Bill_Number;
+            document.getElementById('incomingDate').value = bill.Date_Received;
+            document.getElementById('incomingSupplier').value = bill.Supplier_Name;
+            document.getElementById('incomingRemarks').value = bill.Remarks || '';
+            
+            // Add existing items
+            bill.items.forEach(item => this.addItemRow(item));
+        } else {
+            document.getElementById('incomingBillModalTitle').textContent = 'Add Incoming Stock (GRN)';
+            document.getElementById('incomingDate').valueAsDate = new Date();
+        }
+        
+        this.updateItemCount();
+        document.getElementById('incomingBillModal').style.display = 'block';
+    }
+
+    closeModal() {
+        document.getElementById('incomingBillModal').style.display = 'none';
+        this.editingBillId = null;
+    }
+
+    async refreshBillsList() {
+        // Refresh the bills list in your main view
+        const bills = await window.api.incoming.bills.getAll();
+        // Update your UI with the bills list
+        console.log('Bills refreshed:', bills);
+    }
+
+    async viewBillDetails(billId) {
+        const bill = await window.api.incoming.bills.getDetails(billId);
+        
+        const content = `
+            <div class="bill-details">
+                <div class="detail-section">
+                    <h3>Bill Information</h3>
+                    <p><strong>Bill Number:</strong> ${bill.Bill_Number}</p>
+                    <p><strong>Date:</strong> ${bill.Date_Received}</p>
+                    <p><strong>Supplier:</strong> ${bill.Supplier_Name}</p>
+                    <p><strong>Remarks:</strong> ${bill.Remarks || 'N/A'}</p>
+                </div>
+                <div class="detail-section">
+                    <h3>Items (${bill.items.length})</h3>
+                    <table class="details-table">
+                        <thead>
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Quantity</th>
+                                <th>Unit</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${bill.items.map(item => `
+                                <tr>
+                                    <td>${item.Item_Name}</td>
+                                    <td>${item.Qty_Received}</td>
+                                    <td>${item.Unit_Measure}</td>
+                                    <td>${item.Item_Remarks || '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="detail-actions">
+                    <button class="btn btn-primary" onclick="incomingBillManager.openModal(${billId})">
+                        Edit Bill
+                    </button>
+                    <button class="btn btn-danger" onclick="incomingBillManager.deleteBill(${billId})">
+                        Delete Bill
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('billDetailsContent').innerHTML = content;
+        document.getElementById('viewBillModal').style.display = 'block';
+    }
+
+    async deleteBill(billId) {
+        if (!confirm('Are you sure you want to delete this bill? This will remove all items from stock.')) {
+            return;
+        }
+        
+        try {
+            await window.api.incoming.bills.delete(billId);
+            alert('Bill deleted successfully!');
+            document.getElementById('viewBillModal').style.display = 'none';
+            this.refreshBillsList();
+        } catch (error) {
+            console.error('Error deleting bill:', error);
+            alert('Error deleting bill: ' + error.message);
+        }
+    }
+}
+
+// Initialize manager
+let incomingBillManager;
+document.addEventListener('DOMContentLoaded', () => {
+    incomingBillManager = new IncomingBillManager();
+});
+</script>

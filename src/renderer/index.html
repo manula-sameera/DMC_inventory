@@ -157,19 +157,18 @@
                 <!-- Incoming Stock Page -->
                 <div id="incoming-page" class="page">
                     <div class="page-actions">
-                        <button id="addIncomingBtn" class="btn btn-primary">➕ Add Incoming Stock</button>
+                        <button id="addIncomingBillBtn" class="btn btn-primary">➕ Add Incoming Bill (GRN)</button>
                     </div>
                     <div class="card">
                         <div class="table-container">
-                            <table id="incoming-table">
+                            <table id="incoming-bills-table">
                                 <thead>
                                     <tr>
-                                        <th>GRN ID</th>
+                                        <th>Bill Number</th>
                                         <th>Date</th>
-                                        <th>Item Name</th>
                                         <th>Supplier</th>
-                                        <th>Quantity</th>
-                                        <th>Unit</th>
+                                        <th>Items</th>
+                                        <th>Total Qty</th>
                                         <th>Remarks</th>
                                         <th>Actions</th>
                                     </tr>
@@ -183,19 +182,18 @@
                 <!-- Donations Page -->
                 <div id="donations-page" class="page">
                     <div class="page-actions">
-                        <button id="addDonationBtn" class="btn btn-primary">➕ Add Donation</button>
+                        <button id="addDonationBillBtn" class="btn btn-primary">➕ Add Donation Bill</button>
                     </div>
                     <div class="card">
                         <div class="table-container">
-                            <table id="donations-table">
+                            <table id="donation-bills-table">
                                 <thead>
                                     <tr>
-                                        <th>Donation ID</th>
+                                        <th>Bill Number</th>
                                         <th>Date</th>
-                                        <th>Item Name</th>
                                         <th>Donor</th>
-                                        <th>Quantity</th>
-                                        <th>Unit</th>
+                                        <th>Items</th>
+                                        <th>Total Qty</th>
                                         <th>Remarks</th>
                                         <th>Actions</th>
                                     </tr>
@@ -209,21 +207,20 @@
                 <!-- Outgoing Stock Page -->
                 <div id="outgoing-page" class="page">
                     <div class="page-actions">
-                        <button id="addOutgoingBtn" class="btn btn-primary">➕ Dispatch Stock</button>
+                        <button id="addOutgoingBillBtn" class="btn btn-primary">➕ Add Dispatch Bill</button>
                     </div>
                     <div class="card">
                         <div class="table-container">
-                            <table id="outgoing-table">
+                            <table id="outgoing-bills-table">
                                 <thead>
                                     <tr>
-                                        <th>Dispatch ID</th>
+                                        <th>Bill Number</th>
                                         <th>Date</th>
                                         <th>Center</th>
-                                        <th>Item</th>
-                                        <th>Requested</th>
-                                        <th>Issued</th>
                                         <th>Officer</th>
                                         <th>NIC</th>
+                                        <th>Items</th>
+                                        <th>Total Qty</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -375,6 +372,7 @@
         </div>
     </div>
 
+    <script src="bill-functions.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

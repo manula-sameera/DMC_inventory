@@ -19,28 +19,46 @@ contextBridge.exposeInMainWorld('api', {
         delete: (centerId) => ipcRenderer.invoke('centers:delete', centerId)
     },
     
-    // Incoming Stock API
+    // Incoming Stock API (Bill-based)
     incoming: {
-        getAll: () => ipcRenderer.invoke('incoming:getAll'),
-        add: (stock) => ipcRenderer.invoke('incoming:add', stock),
-        update: (grnId, stock) => ipcRenderer.invoke('incoming:update', grnId, stock),
-        delete: (grnId) => ipcRenderer.invoke('incoming:delete', grnId)
+        // Bill operations
+        bills: {
+            getAll: () => ipcRenderer.invoke('incoming:bills:getAll'),
+            getDetails: (billId) => ipcRenderer.invoke('incoming:bills:getDetails', billId),
+            add: (billData) => ipcRenderer.invoke('incoming:bills:add', billData),
+            update: (billId, billData) => ipcRenderer.invoke('incoming:bills:update', billId, billData),
+            delete: (billId) => ipcRenderer.invoke('incoming:bills:delete', billId)
+        },
+        // Legacy item operations (for backward compatibility)
+        getAll: () => ipcRenderer.invoke('incoming:getAll')
     },
     
-    // Donations API
+    // Donations API (Bill-based)
     donations: {
-        getAll: () => ipcRenderer.invoke('donations:getAll'),
-        add: (donation) => ipcRenderer.invoke('donations:add', donation),
-        update: (donationId, donation) => ipcRenderer.invoke('donations:update', donationId, donation),
-        delete: (donationId) => ipcRenderer.invoke('donations:delete', donationId)
+        // Bill operations
+        bills: {
+            getAll: () => ipcRenderer.invoke('donations:bills:getAll'),
+            getDetails: (billId) => ipcRenderer.invoke('donations:bills:getDetails', billId),
+            add: (billData) => ipcRenderer.invoke('donations:bills:add', billData),
+            update: (billId, billData) => ipcRenderer.invoke('donations:bills:update', billId, billData),
+            delete: (billId) => ipcRenderer.invoke('donations:bills:delete', billId)
+        },
+        // Legacy item operations (for backward compatibility)
+        getAll: () => ipcRenderer.invoke('donations:getAll')
     },
     
-    // Outgoing Stock API
+    // Outgoing Stock API (Bill-based)
     outgoing: {
-        getAll: () => ipcRenderer.invoke('outgoing:getAll'),
-        add: (stock) => ipcRenderer.invoke('outgoing:add', stock),
-        update: (dispatchId, stock) => ipcRenderer.invoke('outgoing:update', dispatchId, stock),
-        delete: (dispatchId) => ipcRenderer.invoke('outgoing:delete', dispatchId)
+        // Bill operations
+        bills: {
+            getAll: () => ipcRenderer.invoke('outgoing:bills:getAll'),
+            getDetails: (billId) => ipcRenderer.invoke('outgoing:bills:getDetails', billId),
+            add: (billData) => ipcRenderer.invoke('outgoing:bills:add', billData),
+            update: (billId, billData) => ipcRenderer.invoke('outgoing:bills:update', billId, billData),
+            delete: (billId) => ipcRenderer.invoke('outgoing:bills:delete', billId)
+        },
+        // Legacy item operations (for backward compatibility)
+        getAll: () => ipcRenderer.invoke('outgoing:getAll')
     },
     
     // Current Stock API

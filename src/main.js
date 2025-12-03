@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('./database/db');
 const pdfGenerator = require('./reports/pdfGenerator');
+const DatabaseMigration = require('./database/migration');
 
 let mainWindow;
 
@@ -24,8 +25,41 @@ function createWindow() {
     // mainWindow.webContents.openDevTools();
 }
 
-app.whenReady().then(() => {
+async function checkAndMigrate() {
     try {
+        const userDataPath = app.getPath('userData');
+        const dbPath = path.join(userDataPath, 'dmc_inventory.db');
+        
+        // Only check migration if database file exists
+        if (fs.existsSync(dbPath)) {
+            const migration = new DatabaseMigration(dbPath);
+            
+            if (migration.needsMigration()) {
+                console.log('Database migration required...');
+                const result = migration.runMigration();
+                
+                if (result.success) {
+                    console.log('Migration completed successfully!');
+                    console.log('Backup saved to:', result.backup);
+                    console.log('Verification:', result.verification);
+                } else {
+                    throw new Error('Migration failed: ' + result.error);
+                }
+            } else {
+                console.log('Database is up to date, no migration needed.');
+            }
+        }
+    } catch (error) {
+        console.error('Migration check failed:', error);
+        throw error;
+    }
+}
+
+app.whenReady().then(async () => {
+    try {
+        // Check and run migration if needed before initializing database
+        await checkAndMigrate();
+        
         db.initialize();
         createWindow();
 
@@ -61,23 +95,35 @@ ipcMain.handle('centers:add', (event, center) => db.addCenter(center));
 ipcMain.handle('centers:update', (event, centerId, center) => db.updateCenter(centerId, center));
 ipcMain.handle('centers:delete', (event, centerId) => db.deleteCenter(centerId));
 
-// IPC Handlers for Incoming Stock
+// IPC Handlers for Incoming Stock Bills
+ipcMain.handle('incoming:bills:getAll', () => db.getAllIncomingBills());
+ipcMain.handle('incoming:bills:getDetails', (event, billId) => db.getIncomingBillDetails(billId));
+ipcMain.handle('incoming:bills:add', (event, billData) => db.addIncomingBill(billData));
+ipcMain.handle('incoming:bills:update', (event, billId, billData) => db.updateIncomingBill(billId, billData));
+ipcMain.handle('incoming:bills:delete', (event, billId) => db.deleteIncomingBill(billId));
+
+// Legacy IPC Handlers for Incoming Stock (for backward compatibility)
 ipcMain.handle('incoming:getAll', () => db.getAllIncomingStock());
-ipcMain.handle('incoming:add', (event, stock) => db.addIncomingStock(stock));
-ipcMain.handle('incoming:update', (event, grnId, stock) => db.updateIncomingStock(grnId, stock));
-ipcMain.handle('incoming:delete', (event, grnId) => db.deleteIncomingStock(grnId));
 
-// IPC Handlers for Donations
+// IPC Handlers for Donation Bills
+ipcMain.handle('donations:bills:getAll', () => db.getAllDonationBills());
+ipcMain.handle('donations:bills:getDetails', (event, billId) => db.getDonationBillDetails(billId));
+ipcMain.handle('donations:bills:add', (event, billData) => db.addDonationBill(billData));
+ipcMain.handle('donations:bills:update', (event, billId, billData) => db.updateDonationBill(billId, billData));
+ipcMain.handle('donations:bills:delete', (event, billId) => db.deleteDonationBill(billId));
+
+// Legacy IPC Handlers for Donations (for backward compatibility)
 ipcMain.handle('donations:getAll', () => db.getAllDonations());
-ipcMain.handle('donations:add', (event, donation) => db.addDonation(donation));
-ipcMain.handle('donations:update', (event, donationId, donation) => db.updateDonation(donationId, donation));
-ipcMain.handle('donations:delete', (event, donationId) => db.deleteDonation(donationId));
 
-// IPC Handlers for Outgoing Stock
+// IPC Handlers for Outgoing Stock Bills
+ipcMain.handle('outgoing:bills:getAll', () => db.getAllOutgoingBills());
+ipcMain.handle('outgoing:bills:getDetails', (event, billId) => db.getOutgoingBillDetails(billId));
+ipcMain.handle('outgoing:bills:add', (event, billData) => db.addOutgoingBill(billData));
+ipcMain.handle('outgoing:bills:update', (event, billId, billData) => db.updateOutgoingBill(billId, billData));
+ipcMain.handle('outgoing:bills:delete', (event, billId) => db.deleteOutgoingBill(billId));
+
+// Legacy IPC Handlers for Outgoing Stock (for backward compatibility)
 ipcMain.handle('outgoing:getAll', () => db.getAllOutgoingStock());
-ipcMain.handle('outgoing:add', (event, stock) => db.addOutgoingStock(stock));
-ipcMain.handle('outgoing:update', (event, dispatchId, stock) => db.updateOutgoingStock(dispatchId, stock));
-ipcMain.handle('outgoing:delete', (event, dispatchId) => db.deleteOutgoingStock(dispatchId));
 
 // IPC Handlers for Current Stock
 ipcMain.handle('stock:getCurrent', () => db.getCurrentStock());
