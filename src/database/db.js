@@ -1022,6 +1022,133 @@ class DatabaseManager {
             this.db.close();
         }
     }
+
+    // Bulk Upload Methods
+    bulkInsertItems(rows) {
+        const results = { success: 0, failed: 0, errors: [] };
+        
+        const stmt = this.db.prepare(`
+            INSERT INTO ITEMS_MASTER (Item_Name, Unit_Measure, Category, Reorder_Level, Status)
+            VALUES (?, ?, ?, ?, ?)
+        `);
+
+        const transaction = this.db.transaction((items) => {
+            for (const item of items) {
+                try {
+                    const itemName = item.Item_Name || '';
+                    const unitMeasure = item.Unit_Measure || '';
+                    const category = item.Category || '';
+                    const reorderLevel = parseInt(item.Reorder_Level) || 0;
+                    const status = item.Status || 'Active';
+
+                    // Validate required fields
+                    if (!itemName.trim() || !unitMeasure.trim() || !category.trim()) {
+                        results.failed++;
+                        results.errors.push(`Missing required fields for item: ${itemName}`);
+                        continue;
+                    }
+
+                    stmt.run(itemName.trim(), unitMeasure.trim(), category.trim(), reorderLevel, status);
+                    results.success++;
+                } catch (error) {
+                    results.failed++;
+                    results.errors.push(`Error inserting ${item.Item_Name}: ${error.message}`);
+                }
+            }
+        });
+
+        transaction(rows);
+        return results;
+    }
+
+    bulkInsertCenters(rows) {
+        const results = { success: 0, failed: 0, errors: [] };
+        
+        // Get all GN divisions for lookup
+        const gnDivisions = this.getAllGNDivisions();
+        const gnMap = {};
+        gnDivisions.forEach(gn => {
+            gnMap[gn.GN_Division_Name.toLowerCase().trim()] = gn.GN_ID;
+        });
+
+        const stmt = this.db.prepare(`
+            INSERT INTO CENTERS_MASTER (Center_Name, GN_ID, Contact_Person, Contact_Phone, Status)
+            VALUES (?, ?, ?, ?, ?)
+        `);
+
+        const transaction = this.db.transaction((centers) => {
+            for (const center of centers) {
+                try {
+                    const centerName = center.Center_Name || '';
+                    const gnDivisionName = center.GN_Division_Name || '';
+                    const contactPerson = center.Contact_Person || '';
+                    const contactPhone = center.Contact_Phone || '';
+                    const status = center.Status || 'Active';
+
+                    // Validate required fields
+                    if (!centerName.trim()) {
+                        results.failed++;
+                        results.errors.push(`Missing center name`);
+                        continue;
+                    }
+
+                    // Lookup GN_ID if GN_Division_Name is provided
+                    let gnId = null;
+                    if (gnDivisionName.trim()) {
+                        const gnKey = gnDivisionName.toLowerCase().trim();
+                        gnId = gnMap[gnKey];
+                        if (!gnId) {
+                            results.errors.push(`Warning: GN Division "${gnDivisionName}" not found for center "${centerName}"`);
+                        }
+                    }
+
+                    stmt.run(centerName.trim(), gnId, contactPerson.trim(), contactPhone.trim(), status);
+                    results.success++;
+                } catch (error) {
+                    results.failed++;
+                    results.errors.push(`Error inserting ${center.Center_Name}: ${error.message}`);
+                }
+            }
+        });
+
+        transaction(rows);
+        return results;
+    }
+
+    bulkInsertGNDivisions(rows) {
+        const results = { success: 0, failed: 0, errors: [] };
+        
+        const stmt = this.db.prepare(`
+            INSERT INTO GN_DIVISIONS (GN_Division_Name, DS_Division, Status)
+            VALUES (?, ?, ?)
+        `);
+
+        const transaction = this.db.transaction((gnDivisions) => {
+            for (const gn of gnDivisions) {
+                try {
+                    const gnDivisionName = gn.GN_Division_Name || '';
+                    const dsDivision = gn.DS_Division || '';
+                    const status = gn.Status || 'Active';
+
+                    // Validate required fields
+                    if (!gnDivisionName.trim()) {
+                        results.failed++;
+                        results.errors.push(`Missing GN Division name`);
+                        continue;
+                    }
+
+                    stmt.run(gnDivisionName.trim(), dsDivision.trim(), status);
+                    results.success++;
+                } catch (error) {
+                    results.failed++;
+                    results.errors.push(`Error inserting ${gn.GN_Division_Name}: ${error.message}`);
+                }
+            }
+        });
+
+        transaction(rows);
+        return results;
+    }
 }
 
 module.exports = new DatabaseManager();

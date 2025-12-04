@@ -248,3 +248,31 @@ ipcMain.handle('reports:generatePDF', async (event, options) => {
         return { success: false, error: error.message };
     }
 });
+
+// IPC Handlers for Bulk Upload
+ipcMain.handle('bulkUpload:items', async (event, rows) => {
+    try {
+        return await db.bulkInsertItems(rows);
+    } catch (error) {
+        console.error('Error bulk uploading items:', error);
+        throw error;
+    }
+});
+
+ipcMain.handle('bulkUpload:centers', async (event, rows) => {
+    try {
+        return await db.bulkInsertCenters(rows);
+    } catch (error) {
+        console.error('Error bulk uploading centers:', error);
+        throw error;
+    }
+});
+
+ipcMain.handle('bulkUpload:gn', async (event, rows) => {
+    try {
+        return await db.bulkInsertGNDivisions(rows);
+    } catch (error) {
+        console.error('Error bulk uploading GN divisions:', error);
+        throw error;
+    }
+});

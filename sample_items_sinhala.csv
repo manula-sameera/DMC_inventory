@@ -1,0 +1,11 @@
+Item_Name,Unit_Measure,Category,Reorder_Level,Status
+සහල්,කිලෝ,ආහාර,100,Active
+පරිප්පු,කිලෝ,ආහාර,50,Active
+සීනි,කිලෝ,ආහාර,75,Active
+තෙල්,ලීටර්,ආහාර,30,Active
+පිටි,කිලෝ,ආහාර,60,Active
+කිරිපිටි,කිලෝ,ආහාර,40,Active
+තේ,කිලෝ,බීම,25,Active
+ලුණු,කිලෝ,කුළුබඩු,20,Active
+බිස්කට්,පැකට්,කෑම,100,Active
+නූඩ්ල්ස්,පැකට්,ආහාර,80,Active

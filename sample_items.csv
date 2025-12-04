@@ -1,0 +1,11 @@
+Item_Name,Unit_Measure,Category,Reorder_Level,Status
+Rice,Kg,Food,100,Active
+Dal,Kg,Food,50,Active
+Sugar,Kg,Food,75,Active
+Oil,L,Food,30,Active
+Flour,Kg,Food,60,Active
+Milk Powder,Kg,Food,40,Active
+Tea,Kg,Beverages,25,Active
+Salt,Kg,Condiments,20,Active
+Biscuits,Packet,Snacks,100,Active
+Noodles,Packet,Food,80,Active

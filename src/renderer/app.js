@@ -162,12 +162,15 @@ function initializeEventListeners() {
 
     // Items
     document.getElementById('addItemBtn').addEventListener('click', showAddItemModal);
+    document.getElementById('bulkUploadItemsBtn').addEventListener('click', () => showBulkUploadModal('items'));
 
     // Centers
     document.getElementById('addCenterBtn').addEventListener('click', showAddCenterModal);
+    document.getElementById('bulkUploadCentersBtn').addEventListener('click', () => showBulkUploadModal('centers'));
 
     // GN Divisions
     document.getElementById('addGNDivisionBtn').addEventListener('click', showAddGNDivisionModal);
+    document.getElementById('bulkUploadGNBtn').addEventListener('click', () => showBulkUploadModal('gn'));
 
     // Care Package Templates
     document.getElementById('addCarePackageTemplateBtn').addEventListener('click', showAddCarePackageTemplateModal);
@@ -1940,5 +1943,230 @@ window.addTemplateItemRow = addTemplateItemRow;
 window.removeTemplateItem = removeTemplateItem;
 window.viewCarePackageIssue = viewCarePackageIssue;
 window.editCarePackageIssue = editCarePackageIssue;
+
+// ============ CSV BULK UPLOAD FUNCTIONALITY ============
+
+// Show bulk upload modal
+function showBulkUploadModal(type) {
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+
+    const typeConfig = {
+        items: {
+            title: 'Bulk Upload Items',
+            csvFormat: 'Item_Name,Unit_Measure,Category,Reorder_Level,Status',
+            example: 'Rice,Kg,Food,100,Active\nDal,Kg,Food,50,Active\nSugar,Kg,Food,75,Active',
+            description: 'Upload items in CSV format. Required columns: Item_Name, Unit_Measure, Category. Optional: Reorder_Level (default: 0), Status (default: Active)'
+        },
+        centers: {
+            title: 'Bulk Upload Centers',
+            csvFormat: 'Center_Name,GN_Division_Name,Contact_Person,Contact_Phone,Status',
+            example: 'Center A,GN Division 1,John Doe,0771234567,Active\nCenter B,GN Division 2,Jane Smith,0777654321,Active',
+            description: 'Upload centers in CSV format. Required columns: Center_Name. Optional: GN_Division_Name (must exist in GN Divisions), Contact_Person, Contact_Phone, Status (default: Active)'
+        },
+        gn: {
+            title: 'Bulk Upload GN Divisions',
+            csvFormat: 'GN_Division_Name,DS_Division,Status',
+            example: 'GN Division 1,Aranayake,Active\nGN Division 2,Aranayake,Active\nGN Division 3,Aranayake,Active',
+            description: 'Upload GN Divisions in CSV format. Required columns: GN_Division_Name. Optional: DS_Division, Status (default: Active)'
+        }
+    };
+
+    const config = typeConfig[type];
+    
+    modalTitle.textContent = config.title;
+    modalBody.innerHTML = `
+        <div style="margin-bottom: 20px;">
+            <h4>CSV Format Guidelines</h4>
+            <p>${config.description}</p>
+            <p><strong>CSV Header (first line):</strong></p>
+            <code style="display: block; background: #f4f4f4; padding: 10px; margin: 10px 0; border-radius: 4px; font-size: 12px; white-space: pre-wrap; word-break: break-all;">${config.csvFormat}</code>
+            <p><strong>Example:</strong></p>
+            <code style="display: block; background: #f4f4f4; padding: 10px; margin: 10px 0; border-radius: 4px; font-size: 12px; white-space: pre-wrap; word-break: break-all;">${config.csvFormat}\n${config.example}</code>
+            <p style="color: #666; font-size: 13px;"><strong>Important:</strong> File must be saved as CSV with UTF-8 encoding to support Sinhala/Tamil text.</p>
+        </div>
+        <div class="form-group">
+            <label>Select CSV File</label>
+            <input type="file" id="csvFileInput" accept=".csv" class="form-control" style="padding: 8px;">
+        </div>
+        <div id="uploadPreview" style="margin-top: 20px; display: none;">
+            <h4>Preview (first 5 rows)</h4>
+            <div id="previewContent" style="max-height: 300px; overflow: auto; background: #f9f9f9; padding: 10px; border-radius: 4px; font-size: 12px;"></div>
+        </div>
+        <div id="uploadProgress" style="display: none; margin-top: 20px;">
+            <div class="progress-bar" style="width: 100%; background: #e0e0e0; border-radius: 4px; overflow: hidden; height: 24px;">
+                <div id="progressFill" style="width: 0%; background: #4CAF50; height: 100%; transition: width 0.3s; text-align: center; line-height: 24px; color: white; font-size: 12px;"></div>
+            </div>
+            <p id="uploadStatus" style="margin-top: 10px; font-size: 13px;"></p>
+        </div>
+        <div class="form-actions">
+            <button type="button" id="cancelBtn" class="btn btn-secondary">Cancel</button>
+            <button type="button" id="uploadBtn" class="btn btn-primary" disabled>Upload</button>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+
+    // File input handler
+    const fileInput = document.getElementById('csvFileInput');
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            await previewCSV(file, type);
+            document.getElementById('uploadBtn').disabled = false;
+        }
+    });
+
+    // Upload button handler
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+        const file = fileInput.files[0];
+        if (file) {
+            await processBulkUpload(file, type);
+        }
+    });
+
+    // Cancel button
+    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+}
+
+// Preview CSV file
+async function previewCSV(file, type) {
+    try {
+        const text = await readFileAsUTF8(file);
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+            showNotification('CSV file must contain at least a header row and one data row', 'error');
+            return;
+        }
+
+        const preview = lines.slice(0, 6).join('\n'); // Header + 5 rows
+        document.getElementById('previewContent').textContent = preview;
+        document.getElementById('uploadPreview').style.display = 'block';
+    } catch (error) {
+        console.error('Error previewing CSV:', error);
+        showNotification('Error reading CSV file', 'error');
+    }
+}
+
+// Read file as UTF-8
+function readFileAsUTF8(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsText(file, 'UTF-8'); // Explicitly read as UTF-8
+    });
+}
+
+// Parse CSV with UTF-8 support
+function parseCSV(csvText) {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return { headers: [], rows: [] };
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rows = [];
+
+    for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        if (values.length === headers.length) {
+            const row = {};
+            headers.forEach((header, index) => {
+                row[header] = values[index].trim();
+            });
+            rows.push(row);
+        }
+    }
+
+    return { headers, rows };
+}
+
+// Parse a single CSV line (handles quoted fields)
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            result.push(current);
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    result.push(current);
+    return result;
+}
+
+// Process bulk upload
+async function processBulkUpload(file, type) {
+    const uploadBtn = document.getElementById('uploadBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const progressDiv = document.getElementById('uploadProgress');
+    const progressFill = document.getElementById('progressFill');
+    const statusText = document.getElementById('uploadStatus');
+
+    uploadBtn.disabled = true;
+    cancelBtn.disabled = true;
+    progressDiv.style.display = 'block';
+    progressFill.style.width = '0%';
+    progressFill.textContent = '0%';
+    statusText.textContent = 'Reading CSV file...';
+
+    try {
+        const text = await readFileAsUTF8(file);
+        const { headers, rows } = parseCSV(text);
+
+        if (rows.length === 0) {
+            throw new Error('No data rows found in CSV');
+        }
+
+        statusText.textContent = `Processing ${rows.length} records...`;
+        progressFill.style.width = '30%';
+        progressFill.textContent = '30%';
+
+        // Send to main process for bulk insert
+        const result = await window.api.bulkUpload[type](rows);
+
+        progressFill.style.width = '100%';
+        progressFill.textContent = '100%';
+        statusText.textContent = `Success! Imported ${result.success} records. ${result.failed > 0 ? `Failed: ${result.failed}` : ''}`;
+        
+        if (result.errors && result.errors.length > 0) {
+            console.error('Upload errors:', result.errors);
+            statusText.textContent += '\nSome records failed. Check console for details.';
+        }
+
+        showNotification(`Bulk upload completed: ${result.success} records imported`, 'success');
+        
+        // Re-enable cancel button to allow closing
+        cancelBtn.disabled = false;
+        cancelBtn.textContent = 'Close';
+        
+        setTimeout(() => {
+            closeModal();
+            // Refresh the appropriate page
+            const pageMap = { items: 'items', centers: 'centers', gn: 'gn-divisions' };
+            loadPageData(pageMap[type]);
+        }, 2000);
+
+    } catch (error) {
+        console.error('Error processing bulk upload:', error);
+        progressFill.style.background = '#f44336';
+        progressFill.style.width = '100%';
+        progressFill.textContent = 'Error';
+        statusText.textContent = `Upload failed: ${error.message}`;
+        showNotification(`Upload failed: ${error.message}`, 'error');
+        uploadBtn.disabled = false;
+        cancelBtn.disabled = false;
+    }
+}
 window.deleteCarePackageIssue = deleteCarePackageIssue;
 

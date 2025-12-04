@@ -111,5 +111,12 @@ contextBridge.exposeInMainWorld('api', {
     // Reports API
     reports: {
         generatePDF: (options) => ipcRenderer.invoke('reports:generatePDF', options)
+    },
+
+    // Bulk Upload API
+    bulkUpload: {
+        items: (rows) => ipcRenderer.invoke('bulkUpload:items', rows),
+        centers: (rows) => ipcRenderer.invoke('bulkUpload:centers', rows),
+        gn: (rows) => ipcRenderer.invoke('bulkUpload:gn', rows)
     }
 });
