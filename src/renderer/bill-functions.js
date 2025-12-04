@@ -99,10 +99,12 @@ async function showAddIncomingBillModal() {
         form.addEventListener('submit', handleIncomingBillSubmit);
     }
 
-    // Load items and add first row asynchronously
+    // Load items and add first row asynchronously with deferred rendering
     (async () => {
         await ensureItemsLoaded();
-        addIncomingItemRow();
+        requestAnimationFrame(() => {
+            addIncomingItemRow();
+        });
     })();
 }
 
@@ -116,7 +118,7 @@ function addIncomingItemRow(item = null) {
 
     row.innerHTML = `
         <td>
-            <div id="${selectId}" class="item-select-container"></div>
+            <div id="${selectId}" class="item-select-container"><span class="loading-text">Loading...</span></div>
         </td>
         <td>
             <input type="number" class="item-quantity" min="1" value="${item ? item.Qty_Received : ''}" required>
@@ -131,22 +133,25 @@ function addIncomingItemRow(item = null) {
 
     tbody.appendChild(row);
     
-    // Create searchable select after row is in DOM
-    const itemOptions = currentData.items
-        .filter(i => i.Status === 'Active')
-        .map(i => ({
-            value: i.Item_ID.toString(),
-            text: `${i.Item_Name} (${i.Unit_Measure})`
-        }));
-    
-    const searchableSelect = new SearchableSelect(selectId, itemOptions, 'Search items...');
-    
-    if (item) {
-        searchableSelect.setValue(item.Item_ID.toString());
-    }
-    
-    // Store reference for later retrieval
-    row.searchableSelect = searchableSelect;
+    // Defer searchable select creation to prevent UI blocking
+    requestAnimationFrame(() => {
+        // Create searchable select after row is in DOM
+        const itemOptions = currentData.items
+            .filter(i => i.Status === 'Active')
+            .map(i => ({
+                value: i.Item_ID.toString(),
+                text: `${i.Item_Name} (${i.Unit_Measure})`
+            }));
+        
+        const searchableSelect = new SearchableSelect(selectId, itemOptions, 'Search items...');
+        
+        if (item) {
+            searchableSelect.setValue(item.Item_ID.toString());
+        }
+        
+        // Store reference for later retrieval
+        row.searchableSelect = searchableSelect;
+    });
     
     updateItemCount();
 }
@@ -509,10 +514,12 @@ async function showAddDonationBillModal() {
         form.addEventListener('submit', handleDonationBillSubmit);
     }
 
-    // Load items and add first row asynchronously
+    // Load items and add first row asynchronously with deferred rendering
     (async () => {
         await ensureItemsLoaded();
-        addDonationItemRow();
+        requestAnimationFrame(() => {
+            addDonationItemRow();
+        });
     })();
 }
 
@@ -526,7 +533,7 @@ function addDonationItemRow(item = null) {
 
     row.innerHTML = `
         <td>
-            <div id="${selectId}" class="item-select-container"></div>
+            <div id="${selectId}" class="item-select-container"><span class="loading-text">Loading...</span></div>
         </td>
         <td>
             <input type="number" class="item-quantity" min="1" value="${item ? item.Qty_Received : ''}" required>
@@ -541,22 +548,25 @@ function addDonationItemRow(item = null) {
 
     tbody.appendChild(row);
     
-    // Create searchable select after row is in DOM
-    const itemOptions = currentData.items
-        .filter(i => i.Status === 'Active')
-        .map(i => ({
-            value: i.Item_ID.toString(),
-            text: `${i.Item_Name} (${i.Unit_Measure})`
-        }));
-    
-    const searchableSelect = new SearchableSelect(selectId, itemOptions, 'Search items...');
-    
-    if (item) {
-        searchableSelect.setValue(item.Item_ID.toString());
-    }
-    
-    // Store reference for later retrieval
-    row.searchableSelect = searchableSelect;
+    // Defer searchable select creation to prevent UI blocking
+    requestAnimationFrame(() => {
+        // Create searchable select after row is in DOM
+        const itemOptions = currentData.items
+            .filter(i => i.Status === 'Active')
+            .map(i => ({
+                value: i.Item_ID.toString(),
+                text: `${i.Item_Name} (${i.Unit_Measure})`
+            }));
+        
+        const searchableSelect = new SearchableSelect(selectId, itemOptions, 'Search items...');
+        
+        if (item) {
+            searchableSelect.setValue(item.Item_ID.toString());
+        }
+        
+        // Store reference for later retrieval
+        row.searchableSelect = searchableSelect;
+    });
     
     updateItemCount();
 }
@@ -863,7 +873,7 @@ async function showAddOutgoingBillModal() {
                 </div>
                 <div class="form-group">
                     <label>Center *</label>
-                    <div id="centerIdContainer"></div>
+                    <div id="centerIdContainer"><span class="loading-text">Loading centers...</span></div>
                 </div>
                 <div class="form-group">
                     <label>Officer Name *</label>
@@ -913,23 +923,28 @@ async function showAddOutgoingBillModal() {
         form.addEventListener('submit', handleOutgoingBillSubmit);
     }
 
-    // Load centers and items asynchronously
+    // Load centers and items asynchronously with deferred rendering
     (async () => {
         await Promise.all([ensureCentersLoaded(), ensureItemsLoaded()]);
         
-        // Setup center select
-        const centerOptions = currentData.centers
-            .filter(c => c.Status === 'Active')
-            .map(c => ({ 
-                value: c.Center_ID.toString(), 
-                text: `${c.Center_Name} (${c.District})` 
-            }));
+        // Use requestAnimationFrame to defer rendering and allow UI to update
+        requestAnimationFrame(() => {
+            // Setup center select
+            const centerOptions = currentData.centers
+                .filter(c => c.Status === 'Active')
+                .map(c => ({ 
+                    value: c.Center_ID.toString(), 
+                    text: `${c.Center_Name} (${c.District})` 
+                }));
 
-        const centerSelect = new SearchableSelect('centerIdContainer', centerOptions, 'Search centers...');
-        window.currentCenterSelect = centerSelect;
+            const centerSelect = new SearchableSelect('centerIdContainer', centerOptions, 'Search centers...');
+            window.currentCenterSelect = centerSelect;
 
-        // Add first item row
-        addOutgoingItemRow();
+            // Add first item row in next frame
+            requestAnimationFrame(() => {
+                addOutgoingItemRow();
+            });
+        });
     })();
 }
 
@@ -943,7 +958,7 @@ function addOutgoingItemRow(item = null) {
 
     row.innerHTML = `
         <td>
-            <div id="${selectId}" class="item-select-container"></div>
+            <div id="${selectId}" class="item-select-container"><span class="loading-text">Loading...</span></div>
         </td>
         <td>
             <input type="number" class="item-requested" min="1" value="${item ? item.Qty_Requested : ''}" required>
@@ -961,22 +976,25 @@ function addOutgoingItemRow(item = null) {
 
     tbody.appendChild(row);
     
-    // Create searchable select after row is in DOM
-    const itemOptions = currentData.items
-        .filter(i => i.Status === 'Active')
-        .map(i => ({
-            value: i.Item_ID.toString(),
-            text: `${i.Item_Name} (${i.Unit_Measure})`
-        }));
-    
-    const searchableSelect = new SearchableSelect(selectId, itemOptions, 'Search items...');
-    
-    if (item) {
-        searchableSelect.setValue(item.Item_ID.toString());
-    }
-    
-    // Store reference for later retrieval
-    row.searchableSelect = searchableSelect;
+    // Defer searchable select creation to next frame to prevent UI blocking
+    requestAnimationFrame(() => {
+        // Create searchable select after row is in DOM
+        const itemOptions = currentData.items
+            .filter(i => i.Status === 'Active')
+            .map(i => ({
+                value: i.Item_ID.toString(),
+                text: `${i.Item_Name} (${i.Unit_Measure})`
+            }));
+        
+        const searchableSelect = new SearchableSelect(selectId, itemOptions, 'Search items...');
+        
+        if (item) {
+            searchableSelect.setValue(item.Item_ID.toString());
+        }
+        
+        // Store reference for later retrieval
+        row.searchableSelect = searchableSelect;
+    });
     
     updateItemCount();
 }
@@ -1116,7 +1134,7 @@ async function showEditOutgoingBillModal(billId) {
                     </div>
                     <div class="form-group">
                         <label>Center *</label>
-                        <div id="centerIdContainer"></div>
+                        <div id="centerIdContainer"><span class="loading-text">Loading centers...</span></div>
                     </div>
                     <div class="form-group">
                         <label>Officer Name *</label>
@@ -1169,8 +1187,8 @@ async function showEditOutgoingBillModal(billId) {
             form.addEventListener('submit', handleOutgoingBillUpdate);
         }
 
-        // Setup center select and items asynchronously
-        (async () => {
+        // Setup center select and items asynchronously with deferred rendering
+        requestAnimationFrame(() => {
             // Setup center select
             const centerOptions = currentData.centers.map(c => ({ 
                 value: c.Center_ID.toString(), 
@@ -1181,9 +1199,24 @@ async function showEditOutgoingBillModal(billId) {
             centerSelect.setValue(bill.Center_ID.toString());
             window.currentCenterSelect = centerSelect;
 
-            // Add existing items
-            bill.items.forEach(item => addOutgoingItemRow(item));
-        })();
+            // Add existing items in batches to prevent blocking
+            const items = bill.items;
+            if (items.length > 0) {
+                let index = 0;
+                function addNextBatch() {
+                    const batchSize = 5;
+                    const endIndex = Math.min(index + batchSize, items.length);
+                    for (let i = index; i < endIndex; i++) {
+                        addOutgoingItemRow(items[i]);
+                    }
+                    index = endIndex;
+                    if (index < items.length) {
+                        requestAnimationFrame(addNextBatch);
+                    }
+                }
+                addNextBatch();
+            }
+        });
     } catch (error) {
         console.error('Error loading bill for edit:', error);
         showNotification('Failed to load bill for editing', 'error');

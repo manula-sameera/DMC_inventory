@@ -584,6 +584,20 @@ td.actions {
     background-color: transparent;
 }
 
+.loading-text {
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-style: italic;
+    padding: 8px 0;
+    display: inline-block;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {

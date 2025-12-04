@@ -955,8 +955,11 @@ class SearchableSelect {
     }
 
     showDropdown() {
-        this.renderOptions(this.options);
-        this.dropdown.classList.add('active');
+        // Defer rendering options until dropdown is shown to improve performance
+        requestAnimationFrame(() => {
+            this.renderOptions(this.options);
+            this.dropdown.classList.add('active');
+        });
     }
 
     hideDropdown() {
@@ -976,12 +979,20 @@ class SearchableSelect {
             return;
         }
 
-        this.dropdown.innerHTML = options.map(opt => `
+        // Limit initial rendering to first 100 options for performance
+        const maxInitialRender = 100;
+        const optionsToRender = options.length > maxInitialRender ? options.slice(0, maxInitialRender) : options;
+        
+        this.dropdown.innerHTML = optionsToRender.map(opt => `
             <div class="searchable-select-option ${opt.value === this.selectedValue ? 'selected' : ''}" 
                  data-value="${opt.value}">
                 ${escapeHtml(opt.text)}
             </div>
         `).join('');
+
+        if (options.length > maxInitialRender) {
+            this.dropdown.innerHTML += `<div class="searchable-select-option no-results">Showing ${maxInitialRender} of ${options.length} - type to search</div>`;
+        }
 
         this.dropdown.querySelectorAll('.searchable-select-option').forEach(option => {
             if (!option.classList.contains('no-results')) {
