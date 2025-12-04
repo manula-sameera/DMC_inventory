@@ -90,23 +90,20 @@ async function showAddIncomingBillModal() {
 
     showModal('Add Incoming Bill (GRN)', modalBody);
 
-    // Load suppliers for autocomplete
+    // Load suppliers for autocomplete (non-blocking)
     loadSuppliersList();
 
-    // Load items and setup handlers
-    await ensureItemsLoaded();
-    
-    // Use setTimeout to ensure DOM is ready after innerHTML is set
-    setTimeout(() => {
-        // Add first item row
-        addIncomingItemRow();
+    // Attach form submit handler immediately
+    const form = document.getElementById('incomingBillForm');
+    if (form) {
+        form.addEventListener('submit', handleIncomingBillSubmit);
+    }
 
-        // Form submit
-        const form = document.getElementById('incomingBillForm');
-        if (form) {
-            form.addEventListener('submit', handleIncomingBillSubmit);
-        }
-    }, 0);
+    // Load items and add first row asynchronously
+    (async () => {
+        await ensureItemsLoaded();
+        addIncomingItemRow();
+    })();
 }
 
 function addIncomingItemRow(item = null) {
@@ -322,20 +319,17 @@ async function showEditIncomingBillModal(billId) {
         // Load suppliers
         loadSuppliersList();
 
-        // Load items and populate
-        await ensureItemsLoaded();
-        
-        // Use setTimeout to ensure DOM is ready
-        setTimeout(() => {
-            // Add existing items
-            bill.items.forEach(item => addIncomingItemRow(item));
+        // Attach form submit handler immediately
+        const form = document.getElementById('editIncomingBillForm');
+        if (form) {
+            form.addEventListener('submit', handleIncomingBillUpdate);
+        }
 
-            // Form submit
-            const form = document.getElementById('editIncomingBillForm');
-            if (form) {
-                form.addEventListener('submit', handleIncomingBillUpdate);
-            }
-        }, 0);
+        // Load items and populate asynchronously
+        (async () => {
+            await ensureItemsLoaded();
+            bill.items.forEach(item => addIncomingItemRow(item));
+        })();
     } catch (error) {
         console.error('Error loading bill for edit:', error);
         showNotification('Failed to load bill for editing', 'error');
@@ -506,23 +500,20 @@ async function showAddDonationBillModal() {
 
     showModal('Add Donation Bill', modalBody);
 
-    // Load donors for autocomplete
+    // Load donors for autocomplete (non-blocking)
     loadDonorsList();
 
-    // Load items and setup handlers
-    await ensureItemsLoaded();
-    
-    // Use setTimeout to ensure DOM is ready after innerHTML is set
-    setTimeout(() => {
-        // Add first item row
-        addDonationItemRow();
+    // Attach form submit handler immediately
+    const form = document.getElementById('donationBillForm');
+    if (form) {
+        form.addEventListener('submit', handleDonationBillSubmit);
+    }
 
-        // Form submit
-        const form = document.getElementById('donationBillForm');
-        if (form) {
-            form.addEventListener('submit', handleDonationBillSubmit);
-        }
-    }, 0);
+    // Load items and add first row asynchronously
+    (async () => {
+        await ensureItemsLoaded();
+        addDonationItemRow();
+    })();
 }
 
 function addDonationItemRow(item = null) {
@@ -726,19 +717,17 @@ async function showEditDonationBillModal(billId) {
         loadDonorsList();
 
         // Load items and populate
-        await ensureItemsLoaded();
-        
-        // Use setTimeout to ensure DOM is ready
-        setTimeout(() => {
-            // Add existing items
-            bill.items.forEach(item => addDonationItemRow(item));
+        // Attach form submit handler immediately
+        const form = document.getElementById('editDonationBillForm');
+        if (form) {
+            form.addEventListener('submit', handleDonationBillUpdate);
+        }
 
-            // Form submit
-            const form = document.getElementById('editDonationBillForm');
-            if (form) {
-                form.addEventListener('submit', handleDonationBillUpdate);
-            }
-        }, 0);
+        // Load items and populate asynchronously
+        (async () => {
+            await ensureItemsLoaded();
+            bill.items.forEach(item => addDonationItemRow(item));
+        })();
     } catch (error) {
         console.error('Error loading bill for edit:', error);
         showNotification('Failed to load bill for editing', 'error');
@@ -918,11 +907,16 @@ async function showAddOutgoingBillModal() {
 
     showModal('Add Dispatch Bill', modalBody);
 
-    // Load centers and items
-    await Promise.all([ensureCentersLoaded(), ensureItemsLoaded()]);
-    
-    // Use setTimeout to ensure DOM is ready after innerHTML is set
-    setTimeout(() => {
+    // Attach form submit handler immediately
+    const form = document.getElementById('outgoingBillForm');
+    if (form) {
+        form.addEventListener('submit', handleOutgoingBillSubmit);
+    }
+
+    // Load centers and items asynchronously
+    (async () => {
+        await Promise.all([ensureCentersLoaded(), ensureItemsLoaded()]);
+        
         // Setup center select
         const centerOptions = currentData.centers
             .filter(c => c.Status === 'Active')
@@ -936,13 +930,7 @@ async function showAddOutgoingBillModal() {
 
         // Add first item row
         addOutgoingItemRow();
-
-        // Form submit
-        const form = document.getElementById('outgoingBillForm');
-        if (form) {
-            form.addEventListener('submit', handleOutgoingBillSubmit);
-        }
-    }, 0);
+    })();
 }
 
 function addOutgoingItemRow(item = null) {
@@ -1175,8 +1163,14 @@ async function showEditOutgoingBillModal(billId) {
         // Load centers and items
         await Promise.all([ensureCentersLoaded(), ensureItemsLoaded()]);
         
-        // Use setTimeout to ensure DOM is ready
-        setTimeout(() => {
+        // Attach form submit handler immediately
+        const form = document.getElementById('editOutgoingBillForm');
+        if (form) {
+            form.addEventListener('submit', handleOutgoingBillUpdate);
+        }
+
+        // Setup center select and items asynchronously
+        (async () => {
             // Setup center select
             const centerOptions = currentData.centers.map(c => ({ 
                 value: c.Center_ID.toString(), 
@@ -1189,13 +1183,7 @@ async function showEditOutgoingBillModal(billId) {
 
             // Add existing items
             bill.items.forEach(item => addOutgoingItemRow(item));
-
-            // Form submit
-            const form = document.getElementById('editOutgoingBillForm');
-            if (form) {
-                form.addEventListener('submit', handleOutgoingBillUpdate);
-            }
-        }, 0);
+        })();
     } catch (error) {
         console.error('Error loading bill for edit:', error);
         showNotification('Failed to load bill for editing', 'error');

@@ -262,14 +262,16 @@ class PDFGenerator {
                 this.addHeader(doc, 'Current Stock Report', subtitle);
                 
                 // Prepare table data
-                const headers = ['Item Name', 'Category', 'Unit', 'Quantity', 'Reorder Level', 'Status'];
-                const columnWidths = [150, 100, 60, 80, 80, 60];
+                const headers = ['Item Name', 'Category', 'Unit', 'Current Qty', 'Total In', 'Total Out', 'Reorder', 'Status'];
+                const columnWidths = [120, 80, 50, 60, 60, 60, 50, 50];
                 
                 const rows = data.map(item => [
                     this.ensureString(item.Item_Name),
                     this.ensureString(item.Category || 'N/A'),
                     this.ensureString(item.Unit_Measure),
                     item.Current_Quantity || 0,
+                    item.Total_Incoming || 0,
+                    item.Total_Outgoing || 0,
                     item.Reorder_Level || 0,
                     (item.Current_Quantity || 0) <= (item.Reorder_Level || 0) ? 'Low' : 'OK'
                 ]);

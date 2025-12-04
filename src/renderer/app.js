@@ -21,7 +21,31 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSidebar();
     initializeEventListeners();
     loadDashboard();
+    
+    // Pre-load frequently used data in background to prevent UI blocking
+    preloadCommonData();
 });
+
+// Pre-load common data asynchronously
+async function preloadCommonData() {
+    try {
+        // Load items and centers in parallel for faster modal opening
+        if (currentData.items.length === 0 || currentData.centers.length === 0 || currentData.gnDivisions.length === 0) {
+            const [items, centers, gnDivisions] = await Promise.all([
+                currentData.items.length === 0 ? window.api.items.getActive() : Promise.resolve(currentData.items),
+                currentData.centers.length === 0 ? window.api.centers.getActive() : Promise.resolve(currentData.centers),
+                currentData.gnDivisions.length === 0 ? window.api.gnDivisions.getActive() : Promise.resolve(currentData.gnDivisions)
+            ]);
+            
+            if (currentData.items.length === 0) currentData.items = items;
+            if (currentData.centers.length === 0) currentData.centers = centers;
+            if (currentData.gnDivisions.length === 0) currentData.gnDivisions = gnDivisions;
+        }
+    } catch (error) {
+        console.error('Error preloading data:', error);
+        // Don't show notification, this is background loading
+    }
+}
 
 // Navigation
 function initializeNavigation() {
@@ -252,7 +276,7 @@ function renderCurrentStockTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No stock data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No stock data available</td></tr>';
         return;
     }
 
@@ -265,6 +289,8 @@ function renderCurrentStockTable(data) {
                 <td>${escapeHtml(item.Category)}</td>
                 <td><strong>${item.Current_Quantity}</strong></td>
                 <td>${escapeHtml(item.Unit_Measure)}</td>
+                <td>${item.Total_Incoming || 0}</td>
+                <td>${item.Total_Outgoing || 0}</td>
                 <td>${item.Reorder_Level}</td>
                 <td><span class="status-badge ${statusClass}">${item.Stock_Status}</span></td>
             </tr>
@@ -635,7 +661,7 @@ function renderIncomingBillsTable(data) {
     });
 }
 
-function showAddIncomingModal() {
+async function showAddIncomingModal() {
     const modalBody = `
         <form id="incomingForm">
             <div class="form-group">
@@ -644,7 +670,7 @@ function showAddIncomingModal() {
             </div>
             <div class="form-group">
                 <label>Item *</label>
-                <div id="itemIdContainer"></div>
+                <div id="itemIdContainer"><div class="loading-indicator">Loading items...</div></div>
             </div>
             <div class="form-group">
                 <label>Supplier Name *</label>
@@ -667,12 +693,12 @@ function showAddIncomingModal() {
 
     showModal('Add Incoming Stock', modalBody);
 
-    // Load items if not already loaded
-    const loadItemsPromise = currentData.items.length === 0 ? 
-        window.api.items.getActive().then(items => { currentData.items = items; }) : 
-        Promise.resolve();
-
-    loadItemsPromise.then(() => {
+    // Load items asynchronously without blocking UI
+    try {
+        if (currentData.items.length === 0) {
+            currentData.items = await window.api.items.getActive();
+        }
+        
         const itemOptions = currentData.items
             .filter(i => i.Status === 'Active')
             .map(i => ({ 
@@ -682,8 +708,12 @@ function showAddIncomingModal() {
 
         const itemSelect = new SearchableSelect('itemIdContainer', itemOptions, 'Search items...');
         window.currentItemSelect = itemSelect;
-    });
+    } catch (error) {
+        console.error('Error loading items:', error);
+        document.getElementById('itemIdContainer').innerHTML = '<div class="error-message">Failed to load items</div>';
+    }
 
+    // Add form submit handler immediately
     document.getElementById('incomingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const itemId = window.currentItemSelect ? window.currentItemSelect.getValue() : '';
@@ -708,7 +738,7 @@ function showAddIncomingModal() {
     });
 }
 
-function showEditIncomingModal(grnId) {
+async function showEditIncomingModal(grnId) {
     const stock = currentData.incoming.find(s => s.GRN_ID === grnId);
     if (!stock) {
         showNotification('Record not found', 'error');
@@ -747,7 +777,8 @@ function showEditIncomingModal(grnId) {
     showModal('Edit Incoming Stock', modalBody);
 
     // Load all items for editing (not just active ones)
-    window.api.items.getAll().then(items => {
+    try {
+        const items = await window.api.items.getAll();
         const itemOptions = items.map(i => ({ 
             value: i.Item_ID.toString(), 
             text: `${i.Item_Name} (${i.Unit_Measure})${i.Status === 'Inactive' ? ' [Inactive]' : ''}` 
@@ -756,7 +787,9 @@ function showEditIncomingModal(grnId) {
         const itemSelect = new SearchableSelect('itemIdContainer', itemOptions, 'Search items...');
         itemSelect.setValue(stock.Item_ID.toString());
         window.currentItemSelect = itemSelect;
-    });
+    } catch (error) {
+        console.error('Error loading items:', error);
+    }
 
     document.getElementById('editIncomingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -890,6 +923,7 @@ class SearchableSelect {
                     class="searchable-select-input" 
                     placeholder="${this.placeholder}"
                     autocomplete="off"
+                    style="pointer-events: auto; user-select: text;"
                 />
                 <div class="searchable-select-dropdown"></div>
             </div>
@@ -898,11 +932,17 @@ class SearchableSelect {
         this.input = container.querySelector('.searchable-select-input');
         this.dropdown = container.querySelector('.searchable-select-dropdown');
 
-        this.input.addEventListener('focus', () => this.showDropdown());
-        this.input.addEventListener('input', (e) => this.filterOptions(e.target.value));
-        this.input.addEventListener('blur', () => {
-            setTimeout(() => this.hideDropdown(), 200);
-        });
+        // Ensure input is immediately responsive
+        if (this.input) {
+            this.input.style.pointerEvents = 'auto';
+            this.input.style.userSelect = 'text';
+            
+            this.input.addEventListener('focus', () => this.showDropdown());
+            this.input.addEventListener('input', (e) => this.filterOptions(e.target.value));
+            this.input.addEventListener('blur', () => {
+                setTimeout(() => this.hideDropdown(), 200);
+            });
+        }
 
         document.addEventListener('click', (e) => {
             if (!container.contains(e.target)) {

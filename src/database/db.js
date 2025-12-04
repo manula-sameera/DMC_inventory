@@ -507,7 +507,25 @@ class DatabaseManager {
 
     // Current Stock Methods
     getCurrentStock() {
-        const stmt = this.db.prepare('SELECT * FROM CURRENT_STOCK ORDER BY Item_Name');
+        const stmt = this.db.prepare(`
+            SELECT 
+                cs.*,
+                COALESCE(
+                    (SELECT SUM(Qty_Received) FROM INCOMING_STOCK WHERE Item_ID = cs.Item_ID), 0
+                ) + COALESCE(
+                    (SELECT SUM(Qty_Received) FROM DONATIONS WHERE Item_ID = cs.Item_ID), 0
+                ) AS Total_Incoming,
+                COALESCE(
+                    (SELECT SUM(Qty_Issued) FROM OUTGOING_STOCK WHERE Item_ID = cs.Item_ID), 0
+                ) + COALESCE(
+                    (SELECT SUM(cpti.Quantity_Per_Package * cpi.Packages_Issued)
+                     FROM CARE_PACKAGE_ISSUES cpi
+                     JOIN CARE_PACKAGE_TEMPLATE_ITEMS cpti ON cpi.Template_ID = cpti.Template_ID
+                     WHERE cpti.Item_ID = cs.Item_ID), 0
+                ) AS Total_Outgoing
+            FROM CURRENT_STOCK cs 
+            ORDER BY cs.Item_Name
+        `);
         return stmt.all();
     }
 
