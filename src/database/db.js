@@ -800,6 +800,7 @@ class DatabaseManager {
 
     // Care Package Template Items Methods
     getCarePackageTemplateItems(templateId) {
+        console.log('DB: Getting template items for template:', templateId);
         const stmt = this.db.prepare(`
             SELECT cpti.*, i.Item_Name, i.Unit_Measure, i.Category
             FROM CARE_PACKAGE_TEMPLATE_ITEMS cpti
@@ -807,16 +808,26 @@ class DatabaseManager {
             WHERE cpti.Template_ID = ?
             ORDER BY i.Item_Name
         `);
-        return stmt.all(templateId);
+        const items = stmt.all(templateId);
+        console.log('DB: Found items:', items.length, items);
+        return items;
     }
 
     addCarePackageTemplateItem(templateItem) {
-        const stmt = this.db.prepare(`
-            INSERT INTO CARE_PACKAGE_TEMPLATE_ITEMS (Template_ID, Item_ID, Quantity_Per_Package, Item_Remarks)
-            VALUES (?, ?, ?, ?)
-        `);
-        return stmt.run(templateItem.Template_ID, templateItem.Item_ID, 
-                       templateItem.Quantity_Per_Package, templateItem.Item_Remarks);
+        console.log('DB: Adding care package template item:', templateItem);
+        try {
+            const stmt = this.db.prepare(`
+                INSERT INTO CARE_PACKAGE_TEMPLATE_ITEMS (Template_ID, Item_ID, Quantity_Per_Package, Item_Remarks)
+                VALUES (?, ?, ?, ?)
+            `);
+            const result = stmt.run(templateItem.Template_ID, templateItem.Item_ID, 
+                           templateItem.Quantity_Per_Package, templateItem.Item_Remarks);
+            console.log('DB: Item added successfully, result:', result);
+            return result;
+        } catch (error) {
+            console.error('DB: Error adding care package template item:', error);
+            throw error;
+        }
     }
 
     updateCarePackageTemplateItem(templateItemId, templateItem) {

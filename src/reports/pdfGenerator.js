@@ -327,16 +327,17 @@ class PDFGenerator {
                 this.addHeader(doc, 'Incoming Stock Report', subtitle);
                 
                 // Prepare table data
-                const headers = ['Date', 'Item', 'Quantity', 'Unit', 'Source', 'Remarks'];
-                const columnWidths = [70, 140, 60, 50, 120, 90];
+                const headers = ['Bill #', 'Date', 'Item', 'Qty', 'Unit', 'Source', 'Remarks'];
+                const columnWidths = [55, 55, 110, 45, 40, 100, 125];
                 
                 const rows = data.map(item => [
+                    this.ensureString(item.Bill_Number || 'N/A'),
                     new Date(item.Received_Date).toLocaleDateString(),
                     this.ensureString(item.Item_Name),
                     item.Quantity,
                     this.ensureString(item.Unit_Measure),
                     this.ensureString(item.Source_Name || 'N/A'),
-                    this.ensureString(item.Remarks || '')
+                    this.ensureString(item.Item_Remarks || item.Bill_Remarks || '')
                 ]);
                 
                 // Draw table
@@ -400,16 +401,18 @@ class PDFGenerator {
                 this.addHeader(doc, 'Outgoing Stock Report', subtitle);
                 
                 // Prepare table data
-                const headers = ['Date', 'Item', 'Quantity', 'Unit', 'Center', 'Remarks'];
-                const columnWidths = [70, 140, 60, 50, 120, 90];
+                const headers = ['Bill #', 'Date', 'Item', 'Qty', 'Unit', 'Center', 'Officer', 'Remarks'];
+                const columnWidths = [50, 50, 95, 40, 35, 90, 75, 95];
                 
                 const rows = data.map(item => [
+                    this.ensureString(item.Bill_Number || 'N/A'),
                     new Date(item.Dispatch_Date).toLocaleDateString(),
                     this.ensureString(item.Item_Name),
                     item.Quantity,
                     this.ensureString(item.Unit_Measure),
                     this.ensureString(item.Center_Name || 'N/A'),
-                    this.ensureString(item.Remarks || '')
+                    this.ensureString(item.Officer_Name || 'N/A'),
+                    this.ensureString(item.Item_Remarks || item.Bill_Remarks || '')
                 ]);
                 
                 // Draw table
@@ -473,16 +476,17 @@ class PDFGenerator {
                 this.addHeader(doc, 'Donations Report', subtitle);
                 
                 // Prepare table data
-                const headers = ['Date', 'Item', 'Quantity', 'Unit', 'Donor', 'Contact'];
-                const columnWidths = [70, 140, 60, 50, 120, 90];
+                const headers = ['Bill #', 'Date', 'Item', 'Qty', 'Unit', 'Donor', 'Remarks'];
+                const columnWidths = [55, 55, 120, 45, 40, 110, 105];
                 
                 const rows = data.map(item => [
+                    this.ensureString(item.Bill_Number || 'N/A'),
                     new Date(item.Donation_Date).toLocaleDateString(),
                     this.ensureString(item.Item_Name),
                     item.Quantity,
                     this.ensureString(item.Unit_Measure),
                     this.ensureString(item.Donor_Name || 'Anonymous'),
-                    this.ensureString(item.Donor_Contact || 'N/A')
+                    this.ensureString(item.Item_Remarks || item.Bill_Remarks || '')
                 ]);
                 
                 // Draw table
@@ -519,6 +523,94 @@ class PDFGenerator {
                 
                 doc.moveDown();
                 doc.text(`Unique Donors: ${Object.keys(donorCount).length}`);
+                
+                // Add page numbers
+                const range = doc.bufferedPageRange();
+                for (let i = 0; i < range.count; i++) {
+                    doc.switchToPage(i);
+                    this.addFooter(doc, i + 1, range.count);
+                }
+                
+                doc.end();
+                stream.on('finish', () => resolve(outputPath));
+                stream.on('error', reject);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    // Generate Care Packages Report
+    async generateCarePackagesReport(data, dateRange, outputPath) {
+        return new Promise((resolve, reject) => {
+            try {
+                const doc = this.createDocument();
+                const stream = fs.createWriteStream(outputPath);
+                
+                doc.pipe(stream);
+                
+                // Add header
+                let subtitle = `Care Packages Issued Report`;
+                if (dateRange.from && dateRange.to) {
+                    subtitle += `\nPeriod: ${dateRange.from} to ${dateRange.to}`;
+                }
+                this.addHeader(doc, 'Care Packages Report', subtitle);
+                
+                // Prepare table data
+                const headers = ['Date', 'Package', 'Pkgs Issued', 'Item', 'Total Qty', 'Unit', 'Recipient', 'Officer'];
+                const columnWidths = [55, 80, 50, 90, 50, 35, 85, 85];
+                
+                const rows = data.map(item => [
+                    new Date(item.Date_Issued).toLocaleDateString(),
+                    this.ensureString(item.Package_Name),
+                    item.Packages_Issued,
+                    this.ensureString(item.Item_Name),
+                    item.Total_Quantity,
+                    this.ensureString(item.Unit_Measure),
+                    this.ensureString(item.Recipient || 'N/A'),
+                    this.ensureString(item.Officer_Name || 'N/A')
+                ]);
+                
+                // Draw table
+                this.drawTable(doc, headers, rows, columnWidths);
+                
+                // Add summary
+                doc.moveDown(2);
+                doc.fontSize(10).font(this.getFont(true)).text('Summary:', { underline: true });
+                doc.fontSize(9).font(this.getFont(false));
+                doc.text(`Total Issues: ${data.length}`);
+                
+                // Group by package type
+                const packageSummary = {};
+                data.forEach(item => {
+                    const pkgName = this.ensureString(item.Package_Name);
+                    if (!packageSummary[pkgName]) {
+                        packageSummary[pkgName] = 0;
+                    }
+                    packageSummary[pkgName] += item.Packages_Issued;
+                });
+                
+                doc.moveDown();
+                doc.text('Total Packages Issued by Type:');
+                Object.entries(packageSummary).forEach(([pkgName, count]) => {
+                    doc.text(`  ${this.ensureString(pkgName)}: ${count} packages`);
+                });
+                
+                // Group by item
+                const itemSummary = {};
+                data.forEach(item => {
+                    const itemName = this.ensureString(item.Item_Name);
+                    if (!itemSummary[itemName]) {
+                        itemSummary[itemName] = 0;
+                    }
+                    itemSummary[itemName] += item.Total_Quantity;
+                });
+                
+                doc.moveDown();
+                doc.text('Total Items Distributed:');
+                Object.entries(itemSummary).forEach(([itemName, qty]) => {
+                    doc.text(`  ${this.ensureString(itemName)}: ${qty}`);
+                });
                 
                 // Add page numbers
                 const range = doc.bufferedPageRange();

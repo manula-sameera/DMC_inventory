@@ -229,6 +229,15 @@ ipcMain.handle('reports:generatePDF', async (event, options) => {
                 );
                 break;
 
+            case 'care-packages':
+                data = db.getCarePackageIssuesReport(dateFrom, dateTo);
+                reportPath = await pdfGenerator.generateCarePackagesReport(
+                    data,
+                    { from: dateFrom, to: dateTo },
+                    outputPath
+                );
+                break;
+
             default:
                 return { success: false, error: 'Invalid report type' };
         }

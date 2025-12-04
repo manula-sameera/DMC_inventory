@@ -37,9 +37,9 @@ async function preloadCommonData() {
                 currentData.gnDivisions.length === 0 ? window.api.gnDivisions.getActive() : Promise.resolve(currentData.gnDivisions)
             ]);
             
-            if (currentData.items.length === 0) currentData.items = items;
-            if (currentData.centers.length === 0) currentData.centers = centers;
-            if (currentData.gnDivisions.length === 0) currentData.gnDivisions = gnDivisions;
+            if (currentData.items.length === 0) currentData.items = items || [];
+            if (currentData.centers.length === 0) currentData.centers = centers || [];
+            if (currentData.gnDivisions.length === 0) currentData.gnDivisions = gnDivisions || [];
         }
     } catch (error) {
         console.error('Error preloading data:', error);
@@ -1589,27 +1589,38 @@ async function addTemplateItemRow(templateId) {
     
     const itemId = parseInt(itemSelect.value);
     const qty = parseInt(qtyInput.value);
-    const remarks = remarksInput.value;
+    const remarks = remarksInput.value || '';
     
-    if (!itemId || !qty || qty < 1) {
-        showNotification('Please select an item and enter a valid quantity', 'error');
+    if (!itemId || isNaN(itemId)) {
+        showNotification('Please select an item', 'error');
+        return;
+    }
+    
+    if (!qty || isNaN(qty) || qty < 1) {
+        showNotification('Please enter a valid quantity', 'error');
         return;
     }
     
     try {
-        await window.api.carePackages.addTemplateItem({
+        const itemData = {
             Template_ID: templateId,
             Item_ID: itemId,
             Quantity_Per_Package: qty,
             Item_Remarks: remarks
-        });
+        };
+        
+        console.log('Adding item to template:', itemData);
+        const result = await window.api.carePackages.addTemplateItem(itemData);
+        console.log('Item added successfully:', result);
+        
+        showNotification('Item added to package successfully', 'success');
         
         // Refresh the modal
         closeModal();
-        editCarePackageTemplate(templateId);
+        setTimeout(() => editCarePackageTemplate(templateId), 100);
     } catch (error) {
         console.error('Error adding template item:', error);
-        showNotification('Failed to add item to template', 'error');
+        showNotification('Failed to add item to template: ' + error.message, 'error');
     }
 }
 
@@ -1920,4 +1931,14 @@ async function deleteCarePackageIssue(issueId) {
         showNotification('Failed to delete care package issue', 'error');
     }
 }
+
+// Make care package functions globally accessible for onclick handlers
+window.viewCarePackageTemplate = viewCarePackageTemplate;
+window.editCarePackageTemplate = editCarePackageTemplate;
+window.deleteCarePackageTemplate = deleteCarePackageTemplate;
+window.addTemplateItemRow = addTemplateItemRow;
+window.removeTemplateItem = removeTemplateItem;
+window.viewCarePackageIssue = viewCarePackageIssue;
+window.editCarePackageIssue = editCarePackageIssue;
+window.deleteCarePackageIssue = deleteCarePackageIssue;
 
