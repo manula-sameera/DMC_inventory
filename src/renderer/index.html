@@ -40,6 +40,10 @@
                     <span class="icon">📤</span>
                     <span>Dispatch/Outgoing</span>
                 </li>
+                <li class="nav-item" data-page="care-packages">
+                    <span class="icon">📦</span>
+                    <span>Care Packages</span>
+                </li>
                 <li class="nav-item" data-page="items">
                     <span class="icon">🏷️</span>
                     <span>Items Master</span>
@@ -47,6 +51,10 @@
                 <li class="nav-item" data-page="centers">
                     <span class="icon">🏢</span>
                     <span>Centers Master</span>
+                </li>
+                <li class="nav-item" data-page="gn-divisions">
+                    <span class="icon">🗺️</span>
+                    <span>GN Divisions</span>
                 </li>
                 <li class="nav-item" data-page="reports">
                     <span class="icon">📊</span>
@@ -230,6 +238,65 @@
                     </div>
                 </div>
 
+                <!-- Care Packages Page -->
+                <div id="care-packages-page" class="page">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="templates">Package Templates</button>
+                        <button class="tab-btn" data-tab="issues">Package Issues</button>
+                    </div>
+
+                    <!-- Package Templates Tab -->
+                    <div id="templates-tab" class="tab-content active">
+                        <div class="page-actions">
+                            <button id="addCarePackageTemplateBtn" class="btn btn-primary">➕ Create Package Template</button>
+                        </div>
+                        <div class="card">
+                            <div class="table-container">
+                                <table id="care-package-templates-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Template ID</th>
+                                            <th>Package Name</th>
+                                            <th>Description</th>
+                                            <th>Items Count</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Package Issues Tab -->
+                    <div id="issues-tab" class="tab-content">
+                        <div class="page-actions">
+                            <button id="issueCarePackageBtn" class="btn btn-primary">➕ Issue Care Packages</button>
+                        </div>
+                        <div class="card">
+                            <div class="table-container">
+                                <table id="care-package-issues-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Issue ID</th>
+                                            <th>Date Issued</th>
+                                            <th>Package Name</th>
+                                            <th>Qty Issued</th>
+                                            <th>Recipient Type</th>
+                                            <th>Recipient</th>
+                                            <th>Officer</th>
+                                            <th>Officer NIC</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Items Master Page -->
                 <div id="items-page" class="page">
                     <div class="page-actions">
@@ -267,9 +334,32 @@
                                     <tr>
                                         <th>Center ID</th>
                                         <th>Center Name</th>
-                                        <th>District</th>
+                                        <th>GN Division</th>
                                         <th>Contact Person</th>
                                         <th>Phone</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GN Divisions Master Page -->
+                <div id="gn-divisions-page" class="page">
+                    <div class="page-actions">
+                        <button id="addGNDivisionBtn" class="btn btn-primary">➕ Add GN Division</button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table id="gn-divisions-table">
+                                <thead>
+                                    <tr>
+                                        <th>GN ID</th>
+                                        <th>GN Division Name</th>
+                                        <th>DS Division</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>

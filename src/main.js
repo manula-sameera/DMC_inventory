@@ -62,6 +62,13 @@ ipcMain.handle('centers:add', (event, center) => db.addCenter(center));
 ipcMain.handle('centers:update', (event, centerId, center) => db.updateCenter(centerId, center));
 ipcMain.handle('centers:delete', (event, centerId) => db.deleteCenter(centerId));
 
+// IPC Handlers for GN Divisions
+ipcMain.handle('gnDivisions:getAll', () => db.getAllGNDivisions());
+ipcMain.handle('gnDivisions:getActive', () => db.getActiveGNDivisions());
+ipcMain.handle('gnDivisions:add', (event, gn) => db.addGNDivision(gn));
+ipcMain.handle('gnDivisions:update', (event, gnId, gn) => db.updateGNDivision(gnId, gn));
+ipcMain.handle('gnDivisions:delete', (event, gnId) => db.deleteGNDivision(gnId));
+
 // IPC Handlers for Incoming Stock Bills
 ipcMain.handle('incoming:bills:getAll', () => db.getAllIncomingBills());
 ipcMain.handle('incoming:bills:getDetails', (event, billId) => db.getIncomingBillDetails(billId));
@@ -91,6 +98,26 @@ ipcMain.handle('outgoing:bills:delete', (event, billId) => db.deleteOutgoingBill
 
 // Legacy IPC Handlers for Outgoing Stock (for backward compatibility)
 ipcMain.handle('outgoing:getAll', () => db.getAllOutgoingStock());
+
+// IPC Handlers for Care Packages
+ipcMain.handle('carePackages:getAllTemplates', () => db.getAllCarePackageTemplates());
+ipcMain.handle('carePackages:getActiveTemplates', () => db.getActiveCarePackageTemplates());
+ipcMain.handle('carePackages:getTemplate', (event, templateId) => db.getCarePackageTemplate(templateId));
+ipcMain.handle('carePackages:addTemplate', (event, template) => db.addCarePackageTemplate(template));
+ipcMain.handle('carePackages:updateTemplate', (event, templateId, template) => db.updateCarePackageTemplate(templateId, template));
+ipcMain.handle('carePackages:deleteTemplate', (event, templateId) => db.deleteCarePackageTemplate(templateId));
+
+ipcMain.handle('carePackages:getTemplateItems', (event, templateId) => db.getCarePackageTemplateItems(templateId));
+ipcMain.handle('carePackages:addTemplateItem', (event, templateItem) => db.addCarePackageTemplateItem(templateItem));
+ipcMain.handle('carePackages:updateTemplateItem', (event, templateItemId, templateItem) => db.updateCarePackageTemplateItem(templateItemId, templateItem));
+ipcMain.handle('carePackages:deleteTemplateItem', (event, templateItemId) => db.deleteCarePackageTemplateItem(templateItemId));
+ipcMain.handle('carePackages:copyTemplateItems', (event, sourceId, targetId) => db.copyCarePackageTemplateItems(sourceId, targetId));
+
+ipcMain.handle('carePackages:getAllIssues', () => db.getAllCarePackageIssues());
+ipcMain.handle('carePackages:getIssue', (event, issueId) => db.getCarePackageIssue(issueId));
+ipcMain.handle('carePackages:addIssue', (event, issue) => db.addCarePackageIssue(issue));
+ipcMain.handle('carePackages:updateIssue', (event, issueId, issue) => db.updateCarePackageIssue(issueId, issue));
+ipcMain.handle('carePackages:deleteIssue', (event, issueId) => db.deleteCarePackageIssue(issueId));
 
 // IPC Handlers for Current Stock
 ipcMain.handle('stock:getCurrent', () => db.getCurrentStock());

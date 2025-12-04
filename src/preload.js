@@ -19,6 +19,15 @@ contextBridge.exposeInMainWorld('api', {
         delete: (centerId) => ipcRenderer.invoke('centers:delete', centerId)
     },
     
+    // GN Divisions API
+    gnDivisions: {
+        getAll: () => ipcRenderer.invoke('gnDivisions:getAll'),
+        getActive: () => ipcRenderer.invoke('gnDivisions:getActive'),
+        add: (gn) => ipcRenderer.invoke('gnDivisions:add', gn),
+        update: (gnId, gn) => ipcRenderer.invoke('gnDivisions:update', gnId, gn),
+        delete: (gnId) => ipcRenderer.invoke('gnDivisions:delete', gnId)
+    },
+    
     // Incoming Stock API (Bill-based)
     incoming: {
         // Bill operations
@@ -59,6 +68,31 @@ contextBridge.exposeInMainWorld('api', {
         },
         // Legacy item operations (for backward compatibility)
         getAll: () => ipcRenderer.invoke('outgoing:getAll')
+    },
+    
+    // Care Packages API
+    carePackages: {
+        // Templates
+        getAllTemplates: () => ipcRenderer.invoke('carePackages:getAllTemplates'),
+        getActiveTemplates: () => ipcRenderer.invoke('carePackages:getActiveTemplates'),
+        getTemplate: (templateId) => ipcRenderer.invoke('carePackages:getTemplate', templateId),
+        addTemplate: (template) => ipcRenderer.invoke('carePackages:addTemplate', template),
+        updateTemplate: (templateId, template) => ipcRenderer.invoke('carePackages:updateTemplate', templateId, template),
+        deleteTemplate: (templateId) => ipcRenderer.invoke('carePackages:deleteTemplate', templateId),
+        
+        // Template Items
+        getTemplateItems: (templateId) => ipcRenderer.invoke('carePackages:getTemplateItems', templateId),
+        addTemplateItem: (templateItem) => ipcRenderer.invoke('carePackages:addTemplateItem', templateItem),
+        updateTemplateItem: (templateItemId, templateItem) => ipcRenderer.invoke('carePackages:updateTemplateItem', templateItemId, templateItem),
+        deleteTemplateItem: (templateItemId) => ipcRenderer.invoke('carePackages:deleteTemplateItem', templateItemId),
+        copyTemplateItems: (sourceId, targetId) => ipcRenderer.invoke('carePackages:copyTemplateItems', sourceId, targetId),
+        
+        // Issues
+        getAllIssues: () => ipcRenderer.invoke('carePackages:getAllIssues'),
+        getIssue: (issueId) => ipcRenderer.invoke('carePackages:getIssue', issueId),
+        addIssue: (issue) => ipcRenderer.invoke('carePackages:addIssue', issue),
+        updateIssue: (issueId, issue) => ipcRenderer.invoke('carePackages:updateIssue', issueId, issue),
+        deleteIssue: (issueId) => ipcRenderer.invoke('carePackages:deleteIssue', issueId)
     },
     
     // Current Stock API

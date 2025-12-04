@@ -2,12 +2,15 @@
 let currentData = {
     items: [],
     centers: [],
+    gnDivisions: [],
     incoming: [],
     donations: [],
     outgoing: [],
     incomingBills: [],
     donationBills: [],
     outgoingBills: [],
+    carePackageTemplates: [],
+    carePackageIssues: [],
     currentStock: [],
     lowStock: []
 };
@@ -76,8 +79,10 @@ function switchPage(pageName) {
         'incoming': 'Incoming Stock',
         'donations': 'Donations',
         'outgoing': 'Dispatch/Outgoing Stock',
+        'care-packages': 'Care Packages',
         'items': 'Items Master',
         'centers': 'Centers Master',
+        'gn-divisions': 'GN Divisions',
         'reports': 'Reports',
         'settings': 'Settings'
     };
@@ -107,11 +112,17 @@ function loadPageData(pageName) {
         case 'outgoing':
             loadOutgoingStock();
             break;
+        case 'care-packages':
+            loadCarePackages();
+            break;
         case 'items':
             loadItems();
             break;
         case 'centers':
             loadCenters();
+            break;
+        case 'gn-divisions':
+            loadGNDivisions();
             break;
     }
 }
@@ -130,6 +141,23 @@ function initializeEventListeners() {
 
     // Centers
     document.getElementById('addCenterBtn').addEventListener('click', showAddCenterModal);
+
+    // GN Divisions
+    document.getElementById('addGNDivisionBtn').addEventListener('click', showAddGNDivisionModal);
+
+    // Care Package Templates
+    document.getElementById('addCarePackageTemplateBtn').addEventListener('click', showAddCarePackageTemplateModal);
+    
+    // Care Package Issues
+    document.getElementById('issueCarePackageBtn').addEventListener('click', showIssueCarePackageModal);
+
+    // Care Package Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.getAttribute('data-tab');
+            switchCarePackageTab(tabName);
+        });
+    });
 
     // Incoming Stock Bills
     document.getElementById('addIncomingBillBtn').addEventListener('click', showAddIncomingBillModal);
@@ -430,7 +458,7 @@ function renderCentersTable(data) {
             <tr>
                 <td>${center.Center_ID}</td>
                 <td>${escapeHtml(center.Center_Name)}</td>
-                <td>${escapeHtml(center.District)}</td>
+                <td>${escapeHtml(center.GN_Division_Name || '-')}</td>
                 <td>${escapeHtml(center.Contact_Person || '-')}</td>
                 <td>${escapeHtml(center.Contact_Phone || '-')}</td>
                 <td><span class="status-badge ${statusClass}">${center.Status}</span></td>
@@ -445,7 +473,9 @@ function renderCentersTable(data) {
     });
 }
 
-function showAddCenterModal() {
+async function showAddCenterModal() {
+    const gnDivisions = await window.api.gnDivisions.getActive();
+    
     const modalBody = `
         <form id="centerForm">
             <div class="form-group">
@@ -453,8 +483,11 @@ function showAddCenterModal() {
                 <input type="text" id="centerName" required>
             </div>
             <div class="form-group">
-                <label>District *</label>
-                <input type="text" id="district" required>
+                <label>GN Division</label>
+                <select id="gnDivisionSelect" class="form-control">
+                    <option value="">Select GN Division...</option>
+                    ${gnDivisions.map(gn => `<option value="${gn.GN_ID}">${escapeHtml(gn.GN_Division_Name)}</option>`).join('')}
+                </select>
             </div>
             <div class="form-group">
                 <label>Contact Person</label>
@@ -476,9 +509,10 @@ function showAddCenterModal() {
     document.getElementById('centerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
+            const gnId = document.getElementById('gnDivisionSelect').value;
             await window.api.centers.add({
                 Center_Name: document.getElementById('centerName').value,
-                District: document.getElementById('district').value,
+                GN_ID: gnId ? parseInt(gnId) : null,
                 Contact_Person: document.getElementById('contactPerson').value || null,
                 Contact_Phone: document.getElementById('contactPhone').value || null
             });
@@ -494,6 +528,8 @@ function showAddCenterModal() {
 async function editCenter(centerId) {
     const center = currentData.centers.find(c => c.Center_ID === centerId);
     if (!center) return;
+    
+    const gnDivisions = await window.api.gnDivisions.getActive();
 
     const modalBody = `
         <form id="centerForm">
@@ -502,8 +538,11 @@ async function editCenter(centerId) {
                 <input type="text" id="centerName" value="${escapeHtml(center.Center_Name)}" required>
             </div>
             <div class="form-group">
-                <label>District *</label>
-                <input type="text" id="district" value="${escapeHtml(center.District)}" required>
+                <label>GN Division</label>
+                <select id="gnDivisionSelect" class="form-control">
+                    <option value="">Select GN Division...</option>
+                    ${gnDivisions.map(gn => `<option value="${gn.GN_ID}" ${gn.GN_ID === center.GN_ID ? 'selected' : ''}>${escapeHtml(gn.GN_Division_Name)}</option>`).join('')}
+                </select>
             </div>
             <div class="form-group">
                 <label>Contact Person</label>
@@ -525,9 +564,10 @@ async function editCenter(centerId) {
     document.getElementById('centerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
+            const gnId = document.getElementById('gnDivisionSelect').value;
             await window.api.centers.update(centerId, {
                 Center_Name: document.getElementById('centerName').value,
-                District: document.getElementById('district').value,
+                GN_ID: gnId ? parseInt(gnId) : null,
                 Contact_Person: document.getElementById('contactPerson').value || null,
                 Contact_Phone: document.getElementById('contactPhone').value || null
             });
@@ -1052,6 +1092,792 @@ async function generateReport() {
     } catch (error) {
         console.error('Error generating report:', error);
         showNotification('Failed to generate report', 'error');
+    }
+}
+
+// GN Divisions Functions
+async function loadGNDivisions() {
+    try {
+        const gnDivisions = await window.api.gnDivisions.getAll();
+        currentData.gnDivisions = gnDivisions;
+        renderGNDivisionsTable(gnDivisions);
+    } catch (error) {
+        console.error('Error loading GN divisions:', error);
+        showNotification('Failed to load GN divisions', 'error');
+    }
+}
+
+function renderGNDivisionsTable(data) {
+    const tbody = document.querySelector('#gn-divisions-table tbody');
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No GN divisions found</td></tr>';
+        return;
+    }
+
+    data.forEach(gn => {
+        const statusClass = gn.Status === 'Active' ? 'status-active' : 'status-inactive';
+        const row = `
+            <tr>
+                <td>${gn.GN_ID}</td>
+                <td>${escapeHtml(gn.GN_Division_Name)}</td>
+                <td>${escapeHtml(gn.DS_Division || '-')}</td>
+                <td><span class="status-badge ${statusClass}">${gn.Status}</span></td>
+                <td>
+                    <button class="btn btn-small btn-secondary" onclick="editGNDivision(${gn.GN_ID})">Edit</button>
+                    ${gn.Status === 'Active' ? 
+                        `<button class="btn btn-small btn-danger" onclick="deleteGNDivision(${gn.GN_ID})">Delete</button>` : ''}
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+function showAddGNDivisionModal() {
+    const modalBody = `
+        <form id="gnDivisionForm">
+            <div class="form-group">
+                <label>GN Division Name *</label>
+                <input type="text" id="gnDivisionName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>DS Division</label>
+                <input type="text" id="dsDivision" class="form-control">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Add GN Division</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Add GN Division', modalBody);
+
+    document.getElementById('gnDivisionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const gnData = {
+            GN_Division_Name: document.getElementById('gnDivisionName').value,
+            DS_Division: document.getElementById('dsDivision').value
+        };
+
+        try {
+            await window.api.gnDivisions.add(gnData);
+            showNotification('GN Division added successfully', 'success');
+            closeModal();
+            loadGNDivisions();
+        } catch (error) {
+            console.error('Error adding GN division:', error);
+            showNotification('Failed to add GN division', 'error');
+        }
+    });
+}
+
+async function editGNDivision(gnId) {
+    const gn = currentData.gnDivisions.find(g => g.GN_ID === gnId);
+    if (!gn) return;
+
+    const modalBody = `
+        <form id="gnDivisionForm">
+            <div class="form-group">
+                <label>GN Division Name *</label>
+                <input type="text" id="gnDivisionName" class="form-control" value="${escapeHtml(gn.GN_Division_Name)}" required>
+            </div>
+            <div class="form-group">
+                <label>DS Division</label>
+                <input type="text" id="dsDivision" class="form-control" value="${escapeHtml(gn.DS_Division || '')}">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update GN Division</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Edit GN Division', modalBody);
+
+    document.getElementById('gnDivisionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const gnData = {
+            GN_Division_Name: document.getElementById('gnDivisionName').value,
+            DS_Division: document.getElementById('dsDivision').value
+        };
+
+        try {
+            await window.api.gnDivisions.update(gnId, gnData);
+            showNotification('GN Division updated successfully', 'success');
+            closeModal();
+            loadGNDivisions();
+        } catch (error) {
+            console.error('Error updating GN division:', error);
+            showNotification('Failed to update GN division', 'error');
+        }
+    });
+}
+
+async function deleteGNDivision(gnId) {
+    if (!confirm('Are you sure you want to delete this GN division?')) return;
+
+    try {
+        await window.api.gnDivisions.delete(gnId);
+        showNotification('GN Division deleted successfully', 'success');
+        loadGNDivisions();
+    } catch (error) {
+        console.error('Error deleting GN division:', error);
+        showNotification('Failed to delete GN division', 'error');
+    }
+}
+
+// Care Packages Functions
+async function loadCarePackages() {
+    try {
+        const [templates, issues] = await Promise.all([
+            window.api.carePackages.getAllTemplates(),
+            window.api.carePackages.getAllIssues()
+        ]);
+        currentData.carePackageTemplates = templates;
+        currentData.carePackageIssues = issues;
+        renderCarePackageTemplatesTable(templates);
+        renderCarePackageIssuesTable(issues);
+    } catch (error) {
+        console.error('Error loading care packages:', error);
+        showNotification('Failed to load care packages', 'error');
+    }
+}
+
+function switchCarePackageTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+}
+
+function renderCarePackageTemplatesTable(data) {
+    const tbody = document.querySelector('#care-package-templates-table tbody');
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No care package templates found</td></tr>';
+        return;
+    }
+
+    data.forEach(async (template) => {
+        const itemsCount = await window.api.carePackages.getTemplateItems(template.Template_ID);
+        const statusClass = template.Status === 'Active' ? 'status-active' : 'status-inactive';
+        const row = `
+            <tr>
+                <td>${template.Template_ID}</td>
+                <td>${escapeHtml(template.Package_Name)}</td>
+                <td>${escapeHtml(template.Description || '-')}</td>
+                <td>${itemsCount.length}</td>
+                <td><span class="status-badge ${statusClass}">${template.Status}</span></td>
+                <td>
+                    <button class="btn btn-small btn-secondary" onclick="viewCarePackageTemplate(${template.Template_ID})">View</button>
+                    <button class="btn btn-small btn-secondary" onclick="editCarePackageTemplate(${template.Template_ID})">Edit</button>
+                    ${template.Status === 'Active' ? 
+                        `<button class="btn btn-small btn-danger" onclick="deleteCarePackageTemplate(${template.Template_ID})">Delete</button>` : ''}
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+function renderCarePackageIssuesTable(data) {
+    const tbody = document.querySelector('#care-package-issues-table tbody');
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No care package issues found</td></tr>';
+        return;
+    }
+
+    data.forEach(issue => {
+        const recipient = issue.Recipient_Type === 'Center' ? issue.Center_Name : issue.GN_Division_Name;
+        const row = `
+            <tr>
+                <td>${issue.Issue_ID}</td>
+                <td>${issue.Date_Issued}</td>
+                <td>${escapeHtml(issue.Package_Name)}</td>
+                <td>${issue.Packages_Issued}</td>
+                <td>${issue.Recipient_Type}</td>
+                <td>${escapeHtml(recipient)}</td>
+                <td>${escapeHtml(issue.Officer_Name)}</td>
+                <td>${escapeHtml(issue.Officer_NIC)}</td>
+                <td>
+                    <button class="btn btn-small btn-secondary" onclick="viewCarePackageIssue(${issue.Issue_ID})">View</button>
+                    <button class="btn btn-small btn-secondary" onclick="editCarePackageIssue(${issue.Issue_ID})">Edit</button>
+                    <button class="btn btn-small btn-danger" onclick="deleteCarePackageIssue(${issue.Issue_ID})">Delete</button>
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+function showAddCarePackageTemplateModal() {
+    const modalBody = `
+        <form id="carePackageTemplateForm">
+            <div class="form-group">
+                <label>Package Name *</label>
+                <input type="text" id="packageName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="packageDescription" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="copyFromExisting"> Copy items from existing package
+                </label>
+                <select id="copyFromTemplate" class="form-control" style="display:none;">
+                    <option value="">Select a package to copy from...</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Create Template</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Create Care Package Template', modalBody);
+
+    // Populate copy from dropdown
+    const copyCheckbox = document.getElementById('copyFromExisting');
+    const copySelect = document.getElementById('copyFromTemplate');
+    
+    copyCheckbox.addEventListener('change', () => {
+        copySelect.style.display = copyCheckbox.checked ? 'block' : 'none';
+        if (copyCheckbox.checked) {
+            // Load active templates
+            currentData.carePackageTemplates.filter(t => t.Status === 'Active').forEach(template => {
+                const option = document.createElement('option');
+                option.value = template.Template_ID;
+                option.textContent = template.Package_Name;
+                copySelect.appendChild(option);
+            });
+        }
+    });
+
+    document.getElementById('carePackageTemplateForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const templateData = {
+            Package_Name: document.getElementById('packageName').value,
+            Description: document.getElementById('packageDescription').value
+        };
+
+        try {
+            const result = await window.api.carePackages.addTemplate(templateData);
+            const newTemplateId = result.lastInsertRowid;
+            
+            // If copying from existing, copy items
+            if (copyCheckbox.checked && copySelect.value) {
+                await window.api.carePackages.copyTemplateItems(
+                    parseInt(copySelect.value),
+                    newTemplateId
+                );
+            }
+            
+            showNotification('Care package template created successfully', 'success');
+            closeModal();
+            
+            // Reload templates first
+            await loadCarePackages();
+            
+            // If not copying, show add items modal
+            if (!copyCheckbox.checked) {
+                setTimeout(() => editCarePackageTemplate(newTemplateId), 100);
+            }
+        } catch (error) {
+            console.error('Error creating care package template:', error);
+            showNotification('Failed to create care package template', 'error');
+        }
+    });
+}
+
+async function viewCarePackageTemplate(templateId) {
+    const template = currentData.carePackageTemplates.find(t => t.Template_ID === templateId);
+    if (!template) return;
+
+    const items = await window.api.carePackages.getTemplateItems(templateId);
+
+    let itemsHtml = '<table class="table"><thead><tr><th>Item</th><th>Quantity</th><th>Unit</th><th>Remarks</th></tr></thead><tbody>';
+    
+    if (items.length === 0) {
+        itemsHtml += '<tr><td colspan="4" class="text-center">No items in this package</td></tr>';
+    } else {
+        items.forEach(item => {
+            itemsHtml += `
+                <tr>
+                    <td>${escapeHtml(item.Item_Name)}</td>
+                    <td>${item.Quantity_Per_Package}</td>
+                    <td>${escapeHtml(item.Unit_Measure)}</td>
+                    <td>${escapeHtml(item.Item_Remarks || '-')}</td>
+                </tr>
+            `;
+        });
+    }
+    itemsHtml += '</tbody></table>';
+
+    const modalBody = `
+        <div>
+            <p><strong>Package Name:</strong> ${escapeHtml(template.Package_Name)}</p>
+            <p><strong>Description:</strong> ${escapeHtml(template.Description || '-')}</p>
+            <p><strong>Status:</strong> ${template.Status}</p>
+            <h4>Items in Package:</h4>
+            ${itemsHtml}
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    `;
+
+    showModal('Care Package Template Details', modalBody);
+}
+
+async function editCarePackageTemplate(templateId) {
+    const template = currentData.carePackageTemplates.find(t => t.Template_ID === templateId);
+    if (!template) return;
+
+    const items = await window.api.carePackages.getTemplateItems(templateId);
+    const allItems = await window.api.items.getActive();
+
+    let itemsHtml = '<div id="templateItemsList">';
+    items.forEach((item, index) => {
+        itemsHtml += `
+            <div class="template-item-row" data-item-id="${item.Template_Item_ID}">
+                <input type="text" value="${escapeHtml(item.Item_Name)}" readonly class="form-control" style="flex:2;">
+                <input type="number" value="${item.Quantity_Per_Package}" class="form-control item-qty" style="flex:1;" min="1" required>
+                <input type="text" value="${escapeHtml(item.Item_Remarks || '')}" class="form-control item-remarks" style="flex:2;" placeholder="Remarks">
+                <button type="button" class="btn btn-danger btn-small" onclick="removeTemplateItem(${item.Template_Item_ID})">✕</button>
+            </div>
+        `;
+    });
+    itemsHtml += '</div>';
+
+    const modalBody = `
+        <form id="editTemplateForm">
+            <div class="form-group">
+                <label>Package Name *</label>
+                <input type="text" id="packageName" class="form-control" value="${escapeHtml(template.Package_Name)}" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="packageDescription" class="form-control" rows="2">${escapeHtml(template.Description || '')}</textarea>
+            </div>
+            <h4>Package Items</h4>
+            <div class="form-group">
+                <label>Add Item</label>
+                <div style="display:flex; gap:10px;">
+                    <select id="addItemSelect" class="form-control" style="flex:2;">
+                        <option value="">Select an item...</option>
+                        ${allItems.map(item => `<option value="${item.Item_ID}">${escapeHtml(item.Item_Name)} (${escapeHtml(item.Unit_Measure)})</option>`).join('')}
+                    </select>
+                    <input type="number" id="addItemQty" class="form-control" placeholder="Qty" style="flex:1;" min="1">
+                    <input type="text" id="addItemRemarks" class="form-control" placeholder="Remarks" style="flex:2;">
+                    <button type="button" class="btn btn-secondary" onclick="addTemplateItemRow(${templateId})">➕ Add</button>
+                </div>
+            </div>
+            ${itemsHtml}
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Template</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+        <style>
+            .template-item-row {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 10px;
+                align-items: center;
+            }
+        </style>
+    `;
+
+    showModal('Edit Care Package Template', modalBody);
+
+    document.getElementById('editTemplateForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const templateData = {
+            Package_Name: document.getElementById('packageName').value,
+            Description: document.getElementById('packageDescription').value
+        };
+
+        try {
+            await window.api.carePackages.updateTemplate(templateId, templateData);
+            
+            // Update all item quantities and remarks
+            const itemRows = document.querySelectorAll('.template-item-row');
+            for (const row of itemRows) {
+                const itemId = row.getAttribute('data-item-id');
+                const qty = row.querySelector('.item-qty').value;
+                const remarks = row.querySelector('.item-remarks').value;
+                
+                await window.api.carePackages.updateTemplateItem(parseInt(itemId), {
+                    Quantity_Per_Package: parseInt(qty),
+                    Item_Remarks: remarks
+                });
+            }
+            
+            showNotification('Care package template updated successfully', 'success');
+            closeModal();
+            loadCarePackages();
+        } catch (error) {
+            console.error('Error updating care package template:', error);
+            showNotification('Failed to update care package template', 'error');
+        }
+    });
+}
+
+async function addTemplateItemRow(templateId) {
+    const itemSelect = document.getElementById('addItemSelect');
+    const qtyInput = document.getElementById('addItemQty');
+    const remarksInput = document.getElementById('addItemRemarks');
+    
+    const itemId = parseInt(itemSelect.value);
+    const qty = parseInt(qtyInput.value);
+    const remarks = remarksInput.value;
+    
+    if (!itemId || !qty || qty < 1) {
+        showNotification('Please select an item and enter a valid quantity', 'error');
+        return;
+    }
+    
+    try {
+        await window.api.carePackages.addTemplateItem({
+            Template_ID: templateId,
+            Item_ID: itemId,
+            Quantity_Per_Package: qty,
+            Item_Remarks: remarks
+        });
+        
+        // Refresh the modal
+        closeModal();
+        editCarePackageTemplate(templateId);
+    } catch (error) {
+        console.error('Error adding template item:', error);
+        showNotification('Failed to add item to template', 'error');
+    }
+}
+
+async function removeTemplateItem(templateItemId) {
+    if (!confirm('Remove this item from the package?')) return;
+    
+    try {
+        await window.api.carePackages.deleteTemplateItem(templateItemId);
+        document.querySelector(`[data-item-id="${templateItemId}"]`).remove();
+        showNotification('Item removed from package', 'success');
+    } catch (error) {
+        console.error('Error removing template item:', error);
+        showNotification('Failed to remove item', 'error');
+    }
+}
+
+async function deleteCarePackageTemplate(templateId) {
+    if (!confirm('Are you sure you want to delete this care package template?')) return;
+
+    try {
+        await window.api.carePackages.deleteTemplate(templateId);
+        showNotification('Care package template deleted successfully', 'success');
+        loadCarePackages();
+    } catch (error) {
+        console.error('Error deleting care package template:', error);
+        showNotification('Failed to delete care package template', 'error');
+    }
+}
+
+async function showIssueCarePackageModal() {
+    const templates = await window.api.carePackages.getActiveTemplates();
+    const centers = await window.api.centers.getActive();
+    const gnDivisions = await window.api.gnDivisions.getActive();
+
+    const modalBody = `
+        <form id="issueCarePackageForm">
+            <div class="form-group">
+                <label>Care Package Template *</label>
+                <select id="issueTemplateId" class="form-control" required>
+                    <option value="">Select a package...</option>
+                    ${templates.map(t => `<option value="${t.Template_ID}">${escapeHtml(t.Package_Name)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Number of Packages *</label>
+                <input type="number" id="packagesIssued" class="form-control" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>Date Issued *</label>
+                <input type="date" id="dateIssued" class="form-control" value="${new Date().toISOString().split('T')[0]}" required>
+            </div>
+            <div class="form-group">
+                <label>Recipient Type *</label>
+                <select id="recipientType" class="form-control" required>
+                    <option value="">Select type...</option>
+                    <option value="Center">Center</option>
+                    <option value="GN Division">GN Division</option>
+                </select>
+            </div>
+            <div class="form-group" id="centerSelectGroup" style="display:none;">
+                <label>Center *</label>
+                <select id="issueCenterId" class="form-control">
+                    <option value="">Select a center...</option>
+                    ${centers.map(c => `<option value="${c.Center_ID}">${escapeHtml(c.Center_Name)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group" id="gnSelectGroup" style="display:none;">
+                <label>GN Division *</label>
+                <select id="issueGNId" class="form-control">
+                    <option value="">Select a GN division...</option>
+                    ${gnDivisions.map(gn => `<option value="${gn.GN_ID}">${escapeHtml(gn.GN_Division_Name)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Officer Name *</label>
+                <input type="text" id="issueOfficerName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Officer NIC *</label>
+                <input type="text" id="issueOfficerNIC" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Remarks</label>
+                <textarea id="issueRemarks" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Issue Packages</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Issue Care Packages', modalBody);
+
+    // Show/hide recipient fields based on type
+    document.getElementById('recipientType').addEventListener('change', (e) => {
+        const type = e.target.value;
+        document.getElementById('centerSelectGroup').style.display = type === 'Center' ? 'block' : 'none';
+        document.getElementById('gnSelectGroup').style.display = type === 'GN Division' ? 'block' : 'none';
+    });
+
+    document.getElementById('issueCarePackageForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const recipientType = document.getElementById('recipientType').value;
+        const centerId = document.getElementById('issueCenterId').value;
+        const gnId = document.getElementById('issueGNId').value;
+        
+        if (recipientType === 'Center' && !centerId) {
+            showNotification('Please select a center', 'error');
+            return;
+        }
+        if (recipientType === 'GN Division' && !gnId) {
+            showNotification('Please select a GN division', 'error');
+            return;
+        }
+        
+        const issueData = {
+            Template_ID: parseInt(document.getElementById('issueTemplateId').value),
+            Date_Issued: document.getElementById('dateIssued').value,
+            Packages_Issued: parseInt(document.getElementById('packagesIssued').value),
+            Recipient_Type: recipientType,
+            Center_ID: centerId ? parseInt(centerId) : null,
+            GN_ID: gnId ? parseInt(gnId) : null,
+            Officer_Name: document.getElementById('issueOfficerName').value,
+            Officer_NIC: document.getElementById('issueOfficerNIC').value,
+            Remarks: document.getElementById('issueRemarks').value
+        };
+
+        try {
+            await window.api.carePackages.addIssue(issueData);
+            showNotification('Care packages issued successfully', 'success');
+            closeModal();
+            loadCarePackages();
+            // Switch to issues tab
+            switchCarePackageTab('issues');
+        } catch (error) {
+            console.error('Error issuing care packages:', error);
+            showNotification('Failed to issue care packages', 'error');
+        }
+    });
+}
+
+async function viewCarePackageIssue(issueId) {
+    const issue = currentData.carePackageIssues.find(i => i.Issue_ID === issueId);
+    if (!issue) return;
+
+    const items = await window.api.carePackages.getTemplateItems(issue.Template_ID);
+    const recipient = issue.Recipient_Type === 'Center' ? issue.Center_Name : issue.GN_Division_Name;
+
+    let itemsHtml = '<table class="table"><thead><tr><th>Item</th><th>Qty per Package</th><th>Total Issued</th><th>Unit</th></tr></thead><tbody>';
+    
+    items.forEach(item => {
+        const totalQty = item.Quantity_Per_Package * issue.Packages_Issued;
+        itemsHtml += `
+            <tr>
+                <td>${escapeHtml(item.Item_Name)}</td>
+                <td>${item.Quantity_Per_Package}</td>
+                <td><strong>${totalQty}</strong></td>
+                <td>${escapeHtml(item.Unit_Measure)}</td>
+            </tr>
+        `;
+    });
+    itemsHtml += '</tbody></table>';
+
+    const modalBody = `
+        <div>
+            <p><strong>Package:</strong> ${escapeHtml(issue.Package_Name)}</p>
+            <p><strong>Packages Issued:</strong> ${issue.Packages_Issued}</p>
+            <p><strong>Date Issued:</strong> ${issue.Date_Issued}</p>
+            <p><strong>Recipient Type:</strong> ${issue.Recipient_Type}</p>
+            <p><strong>Recipient:</strong> ${escapeHtml(recipient)}</p>
+            <p><strong>Officer:</strong> ${escapeHtml(issue.Officer_Name)} (${escapeHtml(issue.Officer_NIC)})</p>
+            <p><strong>Remarks:</strong> ${escapeHtml(issue.Remarks || '-')}</p>
+            <h4>Items Issued:</h4>
+            ${itemsHtml}
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    `;
+
+    showModal('Care Package Issue Details', modalBody);
+}
+
+async function editCarePackageIssue(issueId) {
+    const issue = currentData.carePackageIssues.find(i => i.Issue_ID === issueId);
+    if (!issue) return;
+
+    const templates = await window.api.carePackages.getActiveTemplates();
+    const centers = await window.api.centers.getActive();
+    const gnDivisions = await window.api.gnDivisions.getActive();
+
+    const modalBody = `
+        <form id="editIssueCarePackageForm">
+            <div class="form-group">
+                <label>Care Package Template *</label>
+                <select id="issueTemplateId" class="form-control" required>
+                    ${templates.map(t => `<option value="${t.Template_ID}" ${t.Template_ID === issue.Template_ID ? 'selected' : ''}>${escapeHtml(t.Package_Name)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Number of Packages *</label>
+                <input type="number" id="packagesIssued" class="form-control" value="${issue.Packages_Issued}" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>Date Issued *</label>
+                <input type="date" id="dateIssued" class="form-control" value="${issue.Date_Issued}" required>
+            </div>
+            <div class="form-group">
+                <label>Recipient Type *</label>
+                <select id="recipientType" class="form-control" required>
+                    <option value="Center" ${issue.Recipient_Type === 'Center' ? 'selected' : ''}>Center</option>
+                    <option value="GN Division" ${issue.Recipient_Type === 'GN Division' ? 'selected' : ''}>GN Division</option>
+                </select>
+            </div>
+            <div class="form-group" id="centerSelectGroup" style="display:${issue.Recipient_Type === 'Center' ? 'block' : 'none'};">
+                <label>Center *</label>
+                <select id="issueCenterId" class="form-control">
+                    <option value="">Select a center...</option>
+                    ${centers.map(c => `<option value="${c.Center_ID}" ${c.Center_ID === issue.Center_ID ? 'selected' : ''}>${escapeHtml(c.Center_Name)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group" id="gnSelectGroup" style="display:${issue.Recipient_Type === 'GN Division' ? 'block' : 'none'};">
+                <label>GN Division *</label>
+                <select id="issueGNId" class="form-control">
+                    <option value="">Select a GN division...</option>
+                    ${gnDivisions.map(gn => `<option value="${gn.GN_ID}" ${gn.GN_ID === issue.GN_ID ? 'selected' : ''}>${escapeHtml(gn.GN_Division_Name)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Officer Name *</label>
+                <input type="text" id="issueOfficerName" class="form-control" value="${escapeHtml(issue.Officer_Name)}" required>
+            </div>
+            <div class="form-group">
+                <label>Officer NIC *</label>
+                <input type="text" id="issueOfficerNIC" class="form-control" value="${escapeHtml(issue.Officer_NIC)}" required>
+            </div>
+            <div class="form-group">
+                <label>Remarks</label>
+                <textarea id="issueRemarks" class="form-control" rows="2">${escapeHtml(issue.Remarks || '')}</textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Issue</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    `;
+
+    showModal('Edit Care Package Issue', modalBody);
+
+    // Show/hide recipient fields based on type
+    document.getElementById('recipientType').addEventListener('change', (e) => {
+        const type = e.target.value;
+        document.getElementById('centerSelectGroup').style.display = type === 'Center' ? 'block' : 'none';
+        document.getElementById('gnSelectGroup').style.display = type === 'GN Division' ? 'block' : 'none';
+    });
+
+    document.getElementById('editIssueCarePackageForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const recipientType = document.getElementById('recipientType').value;
+        const centerId = document.getElementById('issueCenterId').value;
+        const gnId = document.getElementById('issueGNId').value;
+        
+        if (recipientType === 'Center' && !centerId) {
+            showNotification('Please select a center', 'error');
+            return;
+        }
+        if (recipientType === 'GN Division' && !gnId) {
+            showNotification('Please select a GN division', 'error');
+            return;
+        }
+        
+        const issueData = {
+            Template_ID: parseInt(document.getElementById('issueTemplateId').value),
+            Date_Issued: document.getElementById('dateIssued').value,
+            Packages_Issued: parseInt(document.getElementById('packagesIssued').value),
+            Recipient_Type: recipientType,
+            Center_ID: centerId ? parseInt(centerId) : null,
+            GN_ID: gnId ? parseInt(gnId) : null,
+            Officer_Name: document.getElementById('issueOfficerName').value,
+            Officer_NIC: document.getElementById('issueOfficerNIC').value,
+            Remarks: document.getElementById('issueRemarks').value
+        };
+
+        try {
+            await window.api.carePackages.updateIssue(issueId, issueData);
+            showNotification('Care package issue updated successfully', 'success');
+            closeModal();
+            loadCarePackages();
+        } catch (error) {
+            console.error('Error updating care package issue:', error);
+            showNotification('Failed to update care package issue', 'error');
+        }
+    });
+}
+
+async function deleteCarePackageIssue(issueId) {
+    if (!confirm('Are you sure you want to delete this care package issue? This will affect stock calculations.')) return;
+
+    try {
+        await window.api.carePackages.deleteIssue(issueId);
+        showNotification('Care package issue deleted successfully', 'success');
+        loadCarePackages();
+    } catch (error) {
+        console.error('Error deleting care package issue:', error);
+        showNotification('Failed to delete care package issue', 'error');
     }
 }
 

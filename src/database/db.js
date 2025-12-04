@@ -75,31 +75,42 @@ class DatabaseManager {
 
     // Centers Master Methods
     getAllCenters() {
-        const stmt = this.db.prepare('SELECT * FROM CENTERS_MASTER ORDER BY Center_Name');
+        const stmt = this.db.prepare(`
+            SELECT c.*, g.GN_Division_Name 
+            FROM CENTERS_MASTER c
+            LEFT JOIN GN_DIVISIONS g ON c.GN_ID = g.GN_ID
+            ORDER BY c.Center_Name
+        `);
         return stmt.all();
     }
 
     getActiveCenters() {
-        const stmt = this.db.prepare('SELECT * FROM CENTERS_MASTER WHERE Status = ? ORDER BY Center_Name');
+        const stmt = this.db.prepare(`
+            SELECT c.*, g.GN_Division_Name 
+            FROM CENTERS_MASTER c
+            LEFT JOIN GN_DIVISIONS g ON c.GN_ID = g.GN_ID
+            WHERE c.Status = ? 
+            ORDER BY c.Center_Name
+        `);
         return stmt.all('Active');
     }
 
     addCenter(center) {
         const stmt = this.db.prepare(`
-            INSERT INTO CENTERS_MASTER (Center_Name, District, Contact_Person, Contact_Phone)
+            INSERT INTO CENTERS_MASTER (Center_Name, GN_ID, Contact_Person, Contact_Phone)
             VALUES (?, ?, ?, ?)
         `);
-        return stmt.run(center.Center_Name, center.District, center.Contact_Person, center.Contact_Phone);
+        return stmt.run(center.Center_Name, center.GN_ID, center.Contact_Person, center.Contact_Phone);
     }
 
     updateCenter(centerId, center) {
         const stmt = this.db.prepare(`
             UPDATE CENTERS_MASTER 
-            SET Center_Name = ?, District = ?, Contact_Person = ?, Contact_Phone = ?,
+            SET Center_Name = ?, GN_ID = ?, Contact_Person = ?, Contact_Phone = ?,
                 Modified_Date = CURRENT_TIMESTAMP
             WHERE Center_ID = ?
         `);
-        return stmt.run(center.Center_Name, center.District, center.Contact_Person, center.Contact_Phone, centerId);
+        return stmt.run(center.Center_Name, center.GN_ID, center.Contact_Person, center.Contact_Phone, centerId);
     }
 
     deleteCenter(centerId) {
@@ -357,11 +368,12 @@ class DatabaseManager {
             SELECT 
                 ob.*,
                 c.Center_Name,
-                c.District,
+                g.GN_Division_Name,
                 COUNT(ost.Dispatch_ID) as Item_Count,
                 SUM(ost.Qty_Issued) as Total_Quantity
             FROM OUTGOING_BILLS ob
             JOIN CENTERS_MASTER c ON ob.Center_ID = c.Center_ID
+            LEFT JOIN GN_DIVISIONS g ON c.GN_ID = g.GN_ID
             LEFT JOIN OUTGOING_STOCK ost ON ob.Bill_ID = ost.Bill_ID
             GROUP BY ob.Bill_ID
             ORDER BY ob.Date_Issued DESC, ob.Bill_ID DESC
@@ -371,9 +383,10 @@ class DatabaseManager {
 
     getOutgoingBillDetails(billId) {
         const billStmt = this.db.prepare(`
-            SELECT ob.*, c.Center_Name, c.District
+            SELECT ob.*, c.Center_Name, g.GN_Division_Name
             FROM OUTGOING_BILLS ob
             JOIN CENTERS_MASTER c ON ob.Center_ID = c.Center_ID
+            LEFT JOIN GN_DIVISIONS g ON c.GN_ID = g.GN_ID
             WHERE ob.Bill_ID = ?
         `);
         const bill = billStmt.get(billId);
@@ -471,7 +484,7 @@ class DatabaseManager {
                 ob.Date_Issued,
                 ob.Center_ID,
                 c.Center_Name,
-                c.District,
+                g.GN_Division_Name,
                 ost.Item_ID,
                 im.Item_Name,
                 im.Unit_Measure,
@@ -486,6 +499,7 @@ class DatabaseManager {
             JOIN OUTGOING_BILLS ob ON ost.Bill_ID = ob.Bill_ID
             JOIN ITEMS_MASTER im ON ost.Item_ID = im.Item_ID
             JOIN CENTERS_MASTER c ON ob.Center_ID = c.Center_ID
+            LEFT JOIN GN_DIVISIONS g ON c.GN_ID = g.GN_ID
             ORDER BY ob.Date_Issued DESC, ost.Dispatch_ID DESC
         `);
         return stmt.all();
@@ -690,6 +704,246 @@ class DatabaseManager {
         }
         
         query += ` ORDER BY db.Date_Received DESC, db.Bill_Number, i.Item_Name`;
+        
+        const stmt = this.db.prepare(query);
+        return stmt.all(...params);
+    }
+
+    // GN Divisions Methods
+    getAllGNDivisions() {
+        const stmt = this.db.prepare('SELECT * FROM GN_DIVISIONS ORDER BY GN_Division_Name');
+        return stmt.all();
+    }
+
+    getActiveGNDivisions() {
+        const stmt = this.db.prepare('SELECT * FROM GN_DIVISIONS WHERE Status = ? ORDER BY GN_Division_Name');
+        return stmt.all('Active');
+    }
+
+    addGNDivision(gn) {
+        const stmt = this.db.prepare(`
+            INSERT INTO GN_DIVISIONS (GN_Division_Name, DS_Division)
+            VALUES (?, ?)
+        `);
+        return stmt.run(gn.GN_Division_Name, gn.DS_Division);
+    }
+
+    updateGNDivision(gnId, gn) {
+        const stmt = this.db.prepare(`
+            UPDATE GN_DIVISIONS 
+            SET GN_Division_Name = ?, DS_Division = ?, Modified_Date = CURRENT_TIMESTAMP
+            WHERE GN_ID = ?
+        `);
+        return stmt.run(gn.GN_Division_Name, gn.DS_Division, gnId);
+    }
+
+    deleteGNDivision(gnId) {
+        const stmt = this.db.prepare('UPDATE GN_DIVISIONS SET Status = ?, Modified_Date = CURRENT_TIMESTAMP WHERE GN_ID = ?');
+        return stmt.run('Inactive', gnId);
+    }
+
+    // Care Package Template Methods
+    getAllCarePackageTemplates() {
+        const stmt = this.db.prepare('SELECT * FROM CARE_PACKAGE_TEMPLATES ORDER BY Package_Name');
+        return stmt.all();
+    }
+
+    getActiveCarePackageTemplates() {
+        const stmt = this.db.prepare('SELECT * FROM CARE_PACKAGE_TEMPLATES WHERE Status = ? ORDER BY Package_Name');
+        return stmt.all('Active');
+    }
+
+    getCarePackageTemplate(templateId) {
+        const stmt = this.db.prepare('SELECT * FROM CARE_PACKAGE_TEMPLATES WHERE Template_ID = ?');
+        return stmt.get(templateId);
+    }
+
+    addCarePackageTemplate(template) {
+        const stmt = this.db.prepare(`
+            INSERT INTO CARE_PACKAGE_TEMPLATES (Package_Name, Description)
+            VALUES (?, ?)
+        `);
+        return stmt.run(template.Package_Name, template.Description);
+    }
+
+    updateCarePackageTemplate(templateId, template) {
+        const stmt = this.db.prepare(`
+            UPDATE CARE_PACKAGE_TEMPLATES 
+            SET Package_Name = ?, Description = ?, Modified_Date = CURRENT_TIMESTAMP
+            WHERE Template_ID = ?
+        `);
+        return stmt.run(template.Package_Name, template.Description, templateId);
+    }
+
+    deleteCarePackageTemplate(templateId) {
+        const stmt = this.db.prepare('UPDATE CARE_PACKAGE_TEMPLATES SET Status = ?, Modified_Date = CURRENT_TIMESTAMP WHERE Template_ID = ?');
+        return stmt.run('Inactive', templateId);
+    }
+
+    // Care Package Template Items Methods
+    getCarePackageTemplateItems(templateId) {
+        const stmt = this.db.prepare(`
+            SELECT cpti.*, i.Item_Name, i.Unit_Measure, i.Category
+            FROM CARE_PACKAGE_TEMPLATE_ITEMS cpti
+            JOIN ITEMS_MASTER i ON cpti.Item_ID = i.Item_ID
+            WHERE cpti.Template_ID = ?
+            ORDER BY i.Item_Name
+        `);
+        return stmt.all(templateId);
+    }
+
+    addCarePackageTemplateItem(templateItem) {
+        const stmt = this.db.prepare(`
+            INSERT INTO CARE_PACKAGE_TEMPLATE_ITEMS (Template_ID, Item_ID, Quantity_Per_Package, Item_Remarks)
+            VALUES (?, ?, ?, ?)
+        `);
+        return stmt.run(templateItem.Template_ID, templateItem.Item_ID, 
+                       templateItem.Quantity_Per_Package, templateItem.Item_Remarks);
+    }
+
+    updateCarePackageTemplateItem(templateItemId, templateItem) {
+        const stmt = this.db.prepare(`
+            UPDATE CARE_PACKAGE_TEMPLATE_ITEMS 
+            SET Quantity_Per_Package = ?, Item_Remarks = ?
+            WHERE Template_Item_ID = ?
+        `);
+        return stmt.run(templateItem.Quantity_Per_Package, templateItem.Item_Remarks, templateItemId);
+    }
+
+    deleteCarePackageTemplateItem(templateItemId) {
+        const stmt = this.db.prepare('DELETE FROM CARE_PACKAGE_TEMPLATE_ITEMS WHERE Template_Item_ID = ?');
+        return stmt.run(templateItemId);
+    }
+
+    // Copy template items from one template to another
+    copyCarePackageTemplateItems(sourceTemplateId, targetTemplateId) {
+        const stmt = this.db.prepare(`
+            INSERT INTO CARE_PACKAGE_TEMPLATE_ITEMS (Template_ID, Item_ID, Quantity_Per_Package, Item_Remarks)
+            SELECT ?, Item_ID, Quantity_Per_Package, Item_Remarks
+            FROM CARE_PACKAGE_TEMPLATE_ITEMS
+            WHERE Template_ID = ?
+        `);
+        return stmt.run(targetTemplateId, sourceTemplateId);
+    }
+
+    // Care Package Issues Methods
+    getAllCarePackageIssues() {
+        const stmt = this.db.prepare(`
+            SELECT 
+                cpi.*,
+                cpt.Package_Name,
+                c.Center_Name,
+                gn.GN_Division_Name
+            FROM CARE_PACKAGE_ISSUES cpi
+            JOIN CARE_PACKAGE_TEMPLATES cpt ON cpi.Template_ID = cpt.Template_ID
+            LEFT JOIN CENTERS_MASTER c ON cpi.Center_ID = c.Center_ID
+            LEFT JOIN GN_DIVISIONS gn ON cpi.GN_ID = gn.GN_ID
+            ORDER BY cpi.Date_Issued DESC
+        `);
+        return stmt.all();
+    }
+
+    getCarePackageIssue(issueId) {
+        const stmt = this.db.prepare(`
+            SELECT 
+                cpi.*,
+                cpt.Package_Name,
+                c.Center_Name,
+                gn.GN_Division_Name
+            FROM CARE_PACKAGE_ISSUES cpi
+            JOIN CARE_PACKAGE_TEMPLATES cpt ON cpi.Template_ID = cpt.Template_ID
+            LEFT JOIN CENTERS_MASTER c ON cpi.Center_ID = c.Center_ID
+            LEFT JOIN GN_DIVISIONS gn ON cpi.GN_ID = gn.GN_ID
+            WHERE cpi.Issue_ID = ?
+        `);
+        return stmt.get(issueId);
+    }
+
+    addCarePackageIssue(issue) {
+        const stmt = this.db.prepare(`
+            INSERT INTO CARE_PACKAGE_ISSUES 
+            (Template_ID, Date_Issued, Packages_Issued, Recipient_Type, Center_ID, GN_ID, 
+             Officer_Name, Officer_NIC, Remarks)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        return stmt.run(
+            issue.Template_ID,
+            issue.Date_Issued,
+            issue.Packages_Issued,
+            issue.Recipient_Type,
+            issue.Center_ID || null,
+            issue.GN_ID || null,
+            issue.Officer_Name,
+            issue.Officer_NIC,
+            issue.Remarks
+        );
+    }
+
+    updateCarePackageIssue(issueId, issue) {
+        const stmt = this.db.prepare(`
+            UPDATE CARE_PACKAGE_ISSUES 
+            SET Template_ID = ?, Date_Issued = ?, Packages_Issued = ?, 
+                Recipient_Type = ?, Center_ID = ?, GN_ID = ?,
+                Officer_Name = ?, Officer_NIC = ?, Remarks = ?,
+                Modified_Date = CURRENT_TIMESTAMP
+            WHERE Issue_ID = ?
+        `);
+        return stmt.run(
+            issue.Template_ID,
+            issue.Date_Issued,
+            issue.Packages_Issued,
+            issue.Recipient_Type,
+            issue.Center_ID || null,
+            issue.GN_ID || null,
+            issue.Officer_Name,
+            issue.Officer_NIC,
+            issue.Remarks,
+            issueId
+        );
+    }
+
+    deleteCarePackageIssue(issueId) {
+        const stmt = this.db.prepare('DELETE FROM CARE_PACKAGE_ISSUES WHERE Issue_ID = ?');
+        return stmt.run(issueId);
+    }
+
+    // Get items issued through care packages for a date range
+    getCarePackageIssuesReport(dateFrom, dateTo) {
+        let query = `
+            SELECT 
+                cpi.Date_Issued,
+                cpt.Package_Name,
+                cpi.Packages_Issued,
+                cpi.Recipient_Type,
+                COALESCE(c.Center_Name, gn.GN_Division_Name) as Recipient,
+                i.Item_Name,
+                i.Unit_Measure,
+                (cpti.Quantity_Per_Package * cpi.Packages_Issued) as Total_Quantity,
+                cpi.Officer_Name,
+                cpi.Officer_NIC,
+                cpi.Remarks
+            FROM CARE_PACKAGE_ISSUES cpi
+            JOIN CARE_PACKAGE_TEMPLATES cpt ON cpi.Template_ID = cpt.Template_ID
+            JOIN CARE_PACKAGE_TEMPLATE_ITEMS cpti ON cpt.Template_ID = cpti.Template_ID
+            JOIN ITEMS_MASTER i ON cpti.Item_ID = i.Item_ID
+            LEFT JOIN CENTERS_MASTER c ON cpi.Center_ID = c.Center_ID
+            LEFT JOIN GN_DIVISIONS gn ON cpi.GN_ID = gn.GN_ID
+            WHERE 1=1
+        `;
+        
+        const params = [];
+        
+        if (dateFrom) {
+            query += ` AND DATE(cpi.Date_Issued) >= DATE(?)`;
+            params.push(dateFrom);
+        }
+        
+        if (dateTo) {
+            query += ` AND DATE(cpi.Date_Issued) <= DATE(?)`;
+            params.push(dateTo);
+        }
+        
+        query += ` ORDER BY cpi.Date_Issued DESC, cpt.Package_Name, i.Item_Name`;
         
         const stmt = this.db.prepare(query);
         return stmt.all(...params);
