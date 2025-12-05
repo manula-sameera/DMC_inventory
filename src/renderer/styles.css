@@ -681,6 +681,50 @@ td.actions {
     }
 }
 
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    min-width: 250px;
+    max-width: 400px;
+    padding: 16px 24px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transform: translateX(450px);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    z-index: 10000;
+    font-size: 14px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-success {
+    border-left-color: #4caf50;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), var(--card-bg));
+}
+
+.toast-error {
+    border-left-color: #f44336;
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.1), var(--card-bg));
+}
+
+.toast-warning {
+    border-left-color: #ff9800;
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), var(--card-bg));
+}
+
+.toast-info {
+    border-left-color: #2196f3;
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), var(--card-bg));
+}
+
 /* Utility Classes */
 .text-center {
     text-align: center;

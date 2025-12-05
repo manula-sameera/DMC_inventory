@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #define MyAppName "DMC Inventory System"
-#define MyAppVersion "1.7"
+#define MyAppVersion "1.8"
 #define MyAppPublisher "DS Aranayake"
 #define MyAppURL "http://www.aranayaka.ds.gov.lk/"
 #define MyAppExeName "DMC Inventory System.exe"
@@ -32,7 +32,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only).
 ;PrivilegesRequired=lowest
-OutputBaseFilename=mysetup
+OutputBaseFilename=DMC Inventory System
 SolidCompression=yes
 WizardStyle=modern dynamic
 

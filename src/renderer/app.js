@@ -888,14 +888,42 @@ function closeModal() {
     document.getElementById('modal').classList.remove('active');
     // Remove wide class when closing
     document.querySelector('.modal-content').classList.remove('modal-wide');
+    
+    // Clean up any SearchableSelect instances to prevent event listener leaks
+    const modalBody = document.getElementById('modal-body');
+    if (modalBody) {
+        // Find all rows with searchable selects and destroy them
+        const rows = modalBody.querySelectorAll('[data-select-id]');
+        rows.forEach(row => {
+            if (row.searchableSelect && typeof row.searchableSelect.destroy === 'function') {
+                row.searchableSelect.destroy();
+            }
+        });
+        // Clear modal content after a short delay to prevent focus issues
+        setTimeout(() => {
+            modalBody.innerHTML = '';
+        }, 100);
+    }
 }
 
 // Utility Functions
 function showNotification(message, type = 'info') {
-    // Simple console notification for now
-    // Can be enhanced with a toast notification system
     console.log(`[${type.toUpperCase()}] ${message}`);
-    alert(message);
+    
+    // Create toast notification instead of blocking alert
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    // Show toast
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 function formatDate(dateString) {
@@ -959,11 +987,13 @@ class SearchableSelect {
             });
         }
 
-        document.addEventListener('click', (e) => {
+        // Store the click handler so we can remove it later
+        this.clickHandler = (e) => {
             if (!container.contains(e.target)) {
                 this.hideDropdown();
             }
-        });
+        };
+        document.addEventListener('click', this.clickHandler);
     }
 
     showDropdown() {
@@ -1058,6 +1088,13 @@ class SearchableSelect {
         this.selectedValue = '';
         this.selectedText = '';
         this.input.value = '';
+    }
+    
+    destroy() {
+        // Remove global event listener to prevent memory leaks
+        if (this.clickHandler) {
+            document.removeEventListener('click', this.clickHandler);
+        }
     }
 }
 
