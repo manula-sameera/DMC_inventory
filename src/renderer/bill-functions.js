@@ -388,19 +388,17 @@ async function handleIncomingBillUpdate(e) {
 }
 
 async function deleteIncomingBill(billId) {
-    if (!confirm('Are you sure you want to delete this bill? This will remove all items from stock.')) {
-        return;
-    }
-
-    try {
-        await window.api.incoming.bills.delete(billId);
-        closeModal(); // Close details modal if open
-        loadIncomingStock();
-        showNotification('Bill deleted successfully', 'success');
-    } catch (error) {
-        console.error('Error deleting bill:', error);
-        showNotification('Failed to delete bill: ' + error.message, 'error');
-    }
+    showConfirm('Are you sure you want to delete this bill? This will remove all items from stock.', async () => {
+        try {
+            await window.api.incoming.bills.delete(billId);
+            closeModal(); // Close details modal if open
+            loadIncomingStock();
+            showNotification('Bill deleted successfully', 'success');
+        } catch (error) {
+            console.error('Error deleting bill:', error);
+            showNotification('Failed to delete bill: ' + error.message, 'error');
+        }
+    });
 }
 
 async function loadSuppliersList() {
@@ -791,19 +789,17 @@ async function handleDonationBillUpdate(e) {
 }
 
 async function deleteDonationBill(billId) {
-    if (!confirm('Are you sure you want to delete this donation bill? This will remove all items from stock.')) {
-        return;
-    }
-
-    try {
-        await window.api.donations.bills.delete(billId);
-        closeModal(); // Close details modal if open
-        loadDonations();
-        showNotification('Donation bill deleted successfully', 'success');
-    } catch (error) {
-        console.error('Error deleting donation bill:', error);
-        showNotification('Failed to delete donation bill: ' + error.message, 'error');
-    }
+    showConfirm('Are you sure you want to delete this donation bill? This will remove all items from stock.', async () => {
+        try {
+            await window.api.donations.bills.delete(billId);
+            closeModal(); // Close details modal if open
+            loadDonations();
+            showNotification('Donation bill deleted successfully', 'success');
+        } catch (error) {
+            console.error('Error deleting donation bill:', error);
+            showNotification('Failed to delete donation bill: ' + error.message, 'error');
+        }
+    });
 }
 
 async function loadDonorsList() {
@@ -1285,19 +1281,17 @@ async function handleOutgoingBillUpdate(e) {
 }
 
 async function deleteOutgoingBill(billId) {
-    if (!confirm('Are you sure you want to delete this dispatch bill? This will add items back to stock.')) {
-        return;
-    }
-
-    try {
-        await window.api.outgoing.bills.delete(billId);
-        closeModal(); // Close details modal if open
-        loadOutgoingStock();
-        showNotification('Dispatch bill deleted successfully', 'success');
-    } catch (error) {
-        console.error('Error deleting dispatch bill:', error);
-        showNotification('Failed to delete dispatch bill: ' + error.message, 'error');
-    }
+    showConfirm('Are you sure you want to delete this dispatch bill? This will add items back to stock.', async () => {
+        try {
+            await window.api.outgoing.bills.delete(billId);
+            closeModal(); // Close details modal if open
+            loadOutgoingStock();
+            showNotification('Dispatch bill deleted successfully', 'success');
+        } catch (error) {
+            console.error('Error deleting dispatch bill:', error);
+            showNotification('Failed to delete dispatch bill: ' + error.message, 'error');
+        }
+    });
 }
 
 // ==================== HELPER FUNCTIONS ====================

@@ -449,15 +449,15 @@ async function editItem(itemId) {
 }
 
 async function deleteItem(itemId) {
-    if (!confirm('Are you sure you want to delete this item?')) return;
-
-    try {
-        await window.api.items.delete(itemId);
-        loadItems();
-        showNotification('Item deleted successfully', 'success');
-    } catch (error) {
-        showNotification('Failed to delete item: ' + error.message, 'error');
-    }
+    showConfirm('Are you sure you want to delete this item?', async () => {
+        try {
+            await window.api.items.delete(itemId);
+            loadItems();
+            showNotification('Item deleted successfully', 'success');
+        } catch (error) {
+            showNotification('Failed to delete item: ' + error.message, 'error');
+        }
+    });
 }
 
 // Centers Functions
@@ -610,15 +610,15 @@ async function editCenter(centerId) {
 }
 
 async function deleteCenter(centerId) {
-    if (!confirm('Are you sure you want to delete this center?')) return;
-
-    try {
-        await window.api.centers.delete(centerId);
-        loadCenters();
-        showNotification('Center deleted successfully', 'success');
-    } catch (error) {
-        showNotification('Failed to delete center: ' + error.message, 'error');
-    }
+    showConfirm('Are you sure you want to delete this center?', async () => {
+        try {
+            await window.api.centers.delete(centerId);
+            loadCenters();
+            showNotification('Center deleted successfully', 'success');
+        } catch (error) {
+            showNotification('Failed to delete center: ' + error.message, 'error');
+        }
+    });
 }
 
 // Incoming Stock Functions
@@ -819,16 +819,15 @@ async function showEditIncomingModal(grnId) {
 }
 
 async function deleteIncomingStock(grnId) {
-    if (!confirm('Are you sure you want to delete this incoming stock record?')) {
-        return;
-    }
-    try {
-        await window.api.incoming.delete(grnId);
-        loadIncomingStock();
-        showNotification('Incoming stock deleted successfully', 'success');
-    } catch (error) {
-        showNotification('Failed to delete incoming stock: ' + error.message, 'error');
-    }
+    showConfirm('Are you sure you want to delete this incoming stock record?', async () => {
+        try {
+            await window.api.incoming.delete(grnId);
+            loadIncomingStock();
+            showNotification('Incoming stock deleted successfully', 'success');
+        } catch (error) {
+            showNotification('Failed to delete incoming stock: ' + error.message, 'error');
+        }
+    });
 }
 
 // ==================== DONATIONS & OUTGOING - Handled by bill-functions.js ====================
@@ -852,20 +851,18 @@ async function exportDatabase() {
 }
 
 async function importDatabase() {
-    if (!confirm('Warning: Importing a database will replace all current data. Continue?')) {
-        return;
-    }
-
-    try {
-        const result = await window.api.database.import();
-        if (result.success) {
-            showNotification('Database imported successfully. Page will reload.', 'success');
-        } else if (!result.canceled) {
-            showNotification('Failed to import database', 'error');
+    showConfirm('Warning: Importing a database will replace all current data. Continue?', async () => {
+        try {
+            const result = await window.api.database.import();
+            if (result.success) {
+                showNotification('Database imported successfully. Page will reload.', 'success');
+            } else if (!result.canceled) {
+                showNotification('Failed to import database', 'error');
+            }
+        } catch (error) {
+            showNotification('Failed to import database: ' + error.message, 'error');
         }
-    } catch (error) {
-        showNotification('Failed to import database: ' + error.message, 'error');
-    }
+    });
 }
 
 // Modal Functions
@@ -924,6 +921,42 @@ function showNotification(message, type = 'info') {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+// Non-blocking confirmation dialog
+function showConfirm(message, onConfirm, onCancel = null) {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+        <div class="confirm-dialog">
+            <div class="confirm-message">${escapeHtml(message)}</div>
+            <div class="confirm-buttons">
+                <button class="btn btn-secondary confirm-cancel">Cancel</button>
+                <button class="btn btn-danger confirm-ok">Confirm</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('show'), 10);
+    
+    const handleConfirm = () => {
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 200);
+        if (onConfirm) onConfirm();
+    };
+    
+    const handleCancel = () => {
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 200);
+        if (onCancel) onCancel();
+    };
+    
+    overlay.querySelector('.confirm-ok').addEventListener('click', handleConfirm);
+    overlay.querySelector('.confirm-cancel').addEventListener('click', handleCancel);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) handleCancel();
+    });
 }
 
 function formatDate(dateString) {
@@ -1334,16 +1367,16 @@ async function editGNDivision(gnId) {
 }
 
 async function deleteGNDivision(gnId) {
-    if (!confirm('Are you sure you want to delete this GN division?')) return;
-
-    try {
-        await window.api.gnDivisions.delete(gnId);
-        showNotification('GN Division deleted successfully', 'success');
-        loadGNDivisions();
-    } catch (error) {
-        console.error('Error deleting GN division:', error);
-        showNotification('Failed to delete GN division', 'error');
-    }
+    showConfirm('Are you sure you want to delete this GN division?', async () => {
+        try {
+            await window.api.gnDivisions.delete(gnId);
+            showNotification('GN Division deleted successfully', 'success');
+            loadGNDivisions();
+        } catch (error) {
+            console.error('Error deleting GN division:', error);
+            showNotification('Failed to delete GN division', 'error');
+        }
+    });
 }
 
 // Care Packages Functions
@@ -1700,29 +1733,29 @@ async function addTemplateItemRow(templateId) {
 }
 
 async function removeTemplateItem(templateItemId) {
-    if (!confirm('Remove this item from the package?')) return;
-    
-    try {
-        await window.api.carePackages.deleteTemplateItem(templateItemId);
-        document.querySelector(`[data-item-id="${templateItemId}"]`).remove();
-        showNotification('Item removed from package', 'success');
-    } catch (error) {
-        console.error('Error removing template item:', error);
-        showNotification('Failed to remove item', 'error');
-    }
+    showConfirm('Remove this item from the package?', async () => {
+        try {
+            await window.api.carePackages.deleteTemplateItem(templateItemId);
+            document.querySelector(`[data-item-id="${templateItemId}"]`).remove();
+            showNotification('Item removed from package', 'success');
+        } catch (error) {
+            console.error('Error removing template item:', error);
+            showNotification('Failed to remove item', 'error');
+        }
+    });
 }
 
 async function deleteCarePackageTemplate(templateId) {
-    if (!confirm('Are you sure you want to delete this care package template?')) return;
-
-    try {
-        await window.api.carePackages.deleteTemplate(templateId);
-        showNotification('Care package template deleted successfully', 'success');
-        loadCarePackages();
-    } catch (error) {
-        console.error('Error deleting care package template:', error);
-        showNotification('Failed to delete care package template', 'error');
-    }
+    showConfirm('Are you sure you want to delete this care package template?', async () => {
+        try {
+            await window.api.carePackages.deleteTemplate(templateId);
+            showNotification('Care package template deleted successfully', 'success');
+            loadCarePackages();
+        } catch (error) {
+            console.error('Error deleting care package template:', error);
+            showNotification('Failed to delete care package template', 'error');
+        }
+    });
 }
 
 async function showIssueCarePackageModal() {
@@ -1995,16 +2028,16 @@ async function editCarePackageIssue(issueId) {
 }
 
 async function deleteCarePackageIssue(issueId) {
-    if (!confirm('Are you sure you want to delete this care package issue? This will affect stock calculations.')) return;
-
-    try {
-        await window.api.carePackages.deleteIssue(issueId);
-        showNotification('Care package issue deleted successfully', 'success');
-        loadCarePackages();
-    } catch (error) {
-        console.error('Error deleting care package issue:', error);
-        showNotification('Failed to delete care package issue', 'error');
-    }
+    showConfirm('Are you sure you want to delete this care package issue? This will affect stock calculations.', async () => {
+        try {
+            await window.api.carePackages.deleteIssue(issueId);
+            showNotification('Care package issue deleted successfully', 'success');
+            loadCarePackages();
+        } catch (error) {
+            console.error('Error deleting care package issue:', error);
+            showNotification('Failed to delete care package issue', 'error');
+        }
+    });
 }
 
 // Make care package functions globally accessible for onclick handlers
