@@ -253,7 +253,7 @@ function renderLowStockTable(data) {
             <tr>
                 <td>${escapeHtml(item.Item_Name)}</td>
                 <td>${escapeHtml(item.Category)}</td>
-                <td><strong>${item.Current_Quantity}</strong></td>
+                <td><strong>${Number(item.Current_Quantity).toFixed(2)}</strong></td>
                 <td>${item.Reorder_Level}</td>
                 <td>${escapeHtml(item.Unit_Measure)}</td>
             </tr>
@@ -290,7 +290,7 @@ function renderCurrentStockTable(data) {
                 <td>${item.Item_ID}</td>
                 <td>${escapeHtml(item.Item_Name)}</td>
                 <td>${escapeHtml(item.Category)}</td>
-                <td><strong>${item.Current_Quantity}</strong></td>
+                <td><strong>${Number(item.Current_Quantity).toFixed(2)}</strong></td>
                 <td>${escapeHtml(item.Unit_Measure)}</td>
                 <td>${item.Total_Incoming || 0}</td>
                 <td>${item.Total_Outgoing || 0}</td>
@@ -869,14 +869,25 @@ async function importDatabase() {
 }
 
 // Modal Functions
-function showModal(title, body) {
+function showModal(title, body, wide = false) {
     document.getElementById('modal-title').textContent = title;
     document.getElementById('modal-body').innerHTML = body;
+    const modalContent = document.querySelector('.modal-content');
+    
+    // Add or remove wide class based on parameter
+    if (wide) {
+        modalContent.classList.add('modal-wide');
+    } else {
+        modalContent.classList.remove('modal-wide');
+    }
+    
     document.getElementById('modal').classList.add('active');
 }
 
 function closeModal() {
     document.getElementById('modal').classList.remove('active');
+    // Remove wide class when closing
+    document.querySelector('.modal-content').classList.remove('modal-wide');
 }
 
 // Utility Functions
@@ -912,6 +923,7 @@ class SearchableSelect {
         this.placeholder = placeholder;
         this.selectedValue = '';
         this.selectedText = '';
+        this.optionsRendered = false;
         this.render();
     }
 
@@ -955,11 +967,18 @@ class SearchableSelect {
     }
 
     showDropdown() {
-        // Defer rendering options until dropdown is shown to improve performance
-        requestAnimationFrame(() => {
-            this.renderOptions(this.options);
+        // Only render options when dropdown opens - prevents freezing on modal open
+        if (!this.optionsRendered) {
+            // Render initial empty state immediately
+            this.dropdown.innerHTML = '<div class="searchable-select-option no-results">Start typing to search...</div>';
             this.dropdown.classList.add('active');
-        });
+            this.optionsRendered = true;
+        } else {
+            requestAnimationFrame(() => {
+                this.renderOptions(this.options);
+                this.dropdown.classList.add('active');
+            });
+        }
     }
 
     hideDropdown() {
@@ -967,6 +986,11 @@ class SearchableSelect {
     }
 
     filterOptions(searchTerm) {
+        // Lazy load options on first input
+        if (!this.dropdown.classList.contains('active')) {
+            this.dropdown.classList.add('active');
+        }
+        
         const filtered = this.options.filter(opt => 
             opt.text.toLowerCase().includes(searchTerm.toLowerCase())
         );
@@ -1405,7 +1429,7 @@ function showAddCarePackageTemplateModal() {
         </form>
     `;
 
-    showModal('Create Care Package Template', modalBody);
+    showModal('Create Care Package Template', modalBody, true);
 
     // Populate copy from dropdown
     const copyCheckbox = document.getElementById('copyFromExisting');
@@ -1560,7 +1584,7 @@ async function editCarePackageTemplate(templateId) {
         </style>
     `;
 
-    showModal('Edit Care Package Template', modalBody);
+    showModal('Edit Care Package Template', modalBody, true);
 
     document.getElementById('editTemplateForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1727,7 +1751,7 @@ async function showIssueCarePackageModal() {
         </form>
     `;
 
-    showModal('Issue Care Packages', modalBody);
+    showModal('Issue Care Packages', modalBody, true);
 
     // Show/hide recipient fields based on type
     document.getElementById('recipientType').addEventListener('change', (e) => {
@@ -1884,7 +1908,7 @@ async function editCarePackageIssue(issueId) {
         </form>
     `;
 
-    showModal('Edit Care Package Issue', modalBody);
+    showModal('Edit Care Package Issue', modalBody, true);
 
     // Show/hide recipient fields based on type
     document.getElementById('recipientType').addEventListener('change', (e) => {

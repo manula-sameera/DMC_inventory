@@ -482,6 +482,11 @@ td.actions {
     animation: slideIn 0.3s;
 }
 
+.modal-content.modal-wide {
+    max-width: 1200px;
+    width: 95%;
+}
+
 .close {
     float: right;
     font-size: 28px;

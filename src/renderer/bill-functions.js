@@ -88,7 +88,7 @@ async function showAddIncomingBillModal() {
         </form>
     `;
 
-    showModal('Add Incoming Bill (GRN)', modalBody);
+    showModal('Add Incoming Bill (GRN)', modalBody, true);
 
     // Load suppliers for autocomplete (non-blocking)
     loadSuppliersList();
@@ -319,7 +319,7 @@ async function showEditIncomingBillModal(billId) {
             </form>
         `;
 
-        showModal('Edit Incoming Bill', modalBody);
+        showModal('Edit Incoming Bill', modalBody, true);
 
         // Load suppliers
         loadSuppliersList();
@@ -503,7 +503,7 @@ async function showAddDonationBillModal() {
         </form>
     `;
 
-    showModal('Add Donation Bill', modalBody);
+    showModal('Add Donation Bill', modalBody, true);
 
     // Load donors for autocomplete (non-blocking)
     loadDonorsList();
@@ -721,7 +721,7 @@ async function showEditDonationBillModal(billId) {
             </form>
         `;
 
-        showModal('Edit Donation Bill', modalBody);
+        showModal('Edit Donation Bill', modalBody, true);
 
         // Load donors
         loadDonorsList();
@@ -915,7 +915,7 @@ async function showAddOutgoingBillModal() {
         </form>
     `;
 
-    showModal('Add Dispatch Bill', modalBody);
+    showModal('Add Dispatch Bill', modalBody, true);
 
     // Attach form submit handler immediately
     const form = document.getElementById('outgoingBillForm');
@@ -1176,7 +1176,7 @@ async function showEditOutgoingBillModal(billId) {
             </form>
         `;
 
-        showModal('Edit Dispatch Bill', modalBody);
+        showModal('Edit Dispatch Bill', modalBody, true);
 
         // Load centers and items
         await Promise.all([ensureCentersLoaded(), ensureItemsLoaded()]);
