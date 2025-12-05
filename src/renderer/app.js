@@ -1513,7 +1513,7 @@ async function editCarePackageTemplate(templateId) {
         itemsHtml += `
             <div class="template-item-row" data-item-id="${item.Template_Item_ID}">
                 <input type="text" value="${escapeHtml(item.Item_Name)}" readonly class="form-control" style="flex:2;">
-                <input type="number" value="${item.Quantity_Per_Package}" class="form-control item-qty" style="flex:1;" min="1" required>
+                <input type="number" value="${item.Quantity_Per_Package}" class="form-control item-qty" style="flex:1;" min="0.01" step="0.01" required>
                 <input type="text" value="${escapeHtml(item.Item_Remarks || '')}" class="form-control item-remarks" style="flex:2;" placeholder="Remarks">
                 <button type="button" class="btn btn-danger btn-small" onclick="removeTemplateItem(${item.Template_Item_ID})">✕</button>
             </div>
@@ -1539,7 +1539,7 @@ async function editCarePackageTemplate(templateId) {
                         <option value="">Select an item...</option>
                         ${allItems.map(item => `<option value="${item.Item_ID}">${escapeHtml(item.Item_Name)} (${escapeHtml(item.Unit_Measure)})</option>`).join('')}
                     </select>
-                    <input type="number" id="addItemQty" class="form-control" placeholder="Qty" style="flex:1;" min="1">
+                    <input type="number" id="addItemQty" class="form-control" placeholder="Qty" style="flex:1;" min="0.01" step="0.01">
                     <input type="text" id="addItemRemarks" class="form-control" placeholder="Remarks" style="flex:2;">
                     <button type="button" class="btn btn-secondary" onclick="addTemplateItemRow(${templateId})">➕ Add</button>
                 </div>
@@ -1581,7 +1581,7 @@ async function editCarePackageTemplate(templateId) {
                 const remarks = row.querySelector('.item-remarks').value;
                 
                 await window.api.carePackages.updateTemplateItem(parseInt(itemId), {
-                    Quantity_Per_Package: parseInt(qty),
+                    Quantity_Per_Package: parseFloat(qty),
                     Item_Remarks: remarks
                 });
             }
@@ -1602,7 +1602,7 @@ async function addTemplateItemRow(templateId) {
     const remarksInput = document.getElementById('addItemRemarks');
     
     const itemId = parseInt(itemSelect.value);
-    const qty = parseInt(qtyInput.value);
+    const qty = parseFloat(qtyInput.value);
     const remarks = remarksInput.value || '';
     
     if (!itemId || isNaN(itemId)) {
@@ -1680,7 +1680,7 @@ async function showIssueCarePackageModal() {
             </div>
             <div class="form-group">
                 <label>Number of Packages *</label>
-                <input type="number" id="packagesIssued" class="form-control" min="1" required>
+                <input type="number" id="packagesIssued" class="form-control" min="0.01" step="0.01" required>
             </div>
             <div class="form-group">
                 <label>Date Issued *</label>
@@ -1838,7 +1838,7 @@ async function editCarePackageIssue(issueId) {
             </div>
             <div class="form-group">
                 <label>Number of Packages *</label>
-                <input type="number" id="packagesIssued" class="form-control" value="${issue.Packages_Issued}" min="1" required>
+                <input type="number" id="packagesIssued" class="form-control" value="${issue.Packages_Issued}" min="0.01" step="0.01" required>
             </div>
             <div class="form-group">
                 <label>Date Issued *</label>
@@ -1912,7 +1912,7 @@ async function editCarePackageIssue(issueId) {
         const issueData = {
             Template_ID: parseInt(document.getElementById('issueTemplateId').value),
             Date_Issued: document.getElementById('dateIssued').value,
-            Packages_Issued: parseInt(document.getElementById('packagesIssued').value),
+            Packages_Issued: parseFloat(document.getElementById('packagesIssued').value),
             Recipient_Type: recipientType,
             Center_ID: centerId ? parseInt(centerId) : null,
             GN_ID: gnId ? parseInt(gnId) : null,

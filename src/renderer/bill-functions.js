@@ -121,7 +121,7 @@ function addIncomingItemRow(item = null) {
             <div id="${selectId}" class="item-select-container"><span class="loading-text">Loading...</span></div>
         </td>
         <td>
-            <input type="number" class="item-quantity" min="1" value="${item ? item.Qty_Received : ''}" required>
+            <input type="number" class="item-quantity" min="0.01" step="0.01" value="${item ? item.Qty_Received : ''}" required>
         </td>
         <td>
             <input type="text" class="item-remarks" value="${item ? escapeHtml(item.Item_Remarks || '') : ''}" placeholder="Optional">
@@ -188,7 +188,7 @@ async function handleIncomingBillSubmit(e) {
 
     for (const row of rows) {
         const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
-        const quantity = parseInt(row.querySelector('.item-quantity').value);
+        const quantity = parseFloat(row.querySelector('.item-quantity').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
 
         if (!itemId || !quantity || quantity <= 0) {
@@ -361,7 +361,7 @@ async function handleIncomingBillUpdate(e) {
 
     for (const row of rows) {
         const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
-        const quantity = parseInt(row.querySelector('.item-quantity').value);
+        const quantity = parseFloat(row.querySelector('.item-quantity').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
 
         if (!itemId || !quantity || quantity <= 0) {
@@ -536,7 +536,7 @@ function addDonationItemRow(item = null) {
             <div id="${selectId}" class="item-select-container"><span class="loading-text">Loading...</span></div>
         </td>
         <td>
-            <input type="number" class="item-quantity" min="1" value="${item ? item.Qty_Received : ''}" required>
+            <input type="number" class="item-quantity" min="0.01" step="0.01" value="${item ? item.Qty_Received : ''}" required>
         </td>
         <td>
             <input type="text" class="item-remarks" value="${item ? escapeHtml(item.Item_Remarks || '') : ''}" placeholder="Optional">
@@ -590,7 +590,7 @@ async function handleDonationBillSubmit(e) {
 
     for (const row of rows) {
         const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
-        const quantity = parseInt(row.querySelector('.item-quantity').value);
+        const quantity = parseFloat(row.querySelector('.item-quantity').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
 
         if (!itemId || !quantity || quantity <= 0) {
@@ -764,7 +764,7 @@ async function handleDonationBillUpdate(e) {
 
     for (const row of rows) {
         const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
-        const quantity = parseInt(row.querySelector('.item-quantity').value);
+        const quantity = parseFloat(row.querySelector('.item-quantity').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
 
         if (!itemId || !quantity || quantity <= 0) {
@@ -961,10 +961,10 @@ function addOutgoingItemRow(item = null) {
             <div id="${selectId}" class="item-select-container"><span class="loading-text">Loading...</span></div>
         </td>
         <td>
-            <input type="number" class="item-requested" min="1" value="${item ? item.Qty_Requested : ''}" required>
+            <input type="number" class="item-requested" min="0.01" step="0.01" value="${item ? item.Qty_Requested : ''}" required>
         </td>
         <td>
-            <input type="number" class="item-issued" min="0" value="${item ? item.Qty_Issued : ''}" required>
+            <input type="number" class="item-issued" min="0" step="0.01" value="${item ? item.Qty_Issued : ''}" required>
         </td>
         <td>
             <input type="text" class="item-remarks" value="${item ? escapeHtml(item.Item_Remarks || '') : ''}" placeholder="Optional">
@@ -1026,8 +1026,8 @@ async function handleOutgoingBillSubmit(e) {
 
     for (const row of rows) {
         const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
-        const requested = parseInt(row.querySelector('.item-requested').value);
-        const issued = parseInt(row.querySelector('.item-issued').value);
+        const requested = parseFloat(row.querySelector('.item-requested').value);
+        const issued = parseFloat(row.querySelector('.item-issued').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
 
         if (!itemId || !requested || requested <= 0 || issued < 0) {
@@ -1251,8 +1251,8 @@ async function handleOutgoingBillUpdate(e) {
 
     for (const row of rows) {
         const itemId = row.searchableSelect ? row.searchableSelect.getValue() : '';
-        const requested = parseInt(row.querySelector('.item-requested').value);
-        const issued = parseInt(row.querySelector('.item-issued').value);
+        const requested = parseFloat(row.querySelector('.item-requested').value);
+        const issued = parseFloat(row.querySelector('.item-issued').value);
         const remarks = row.querySelector('.item-remarks').value.trim() || null;
 
         if (!itemId || !requested || requested <= 0 || issued < 0) {
