@@ -172,8 +172,14 @@ function updateItemCount() {
 async function handleIncomingBillSubmit(e) {
     e.preventDefault();
 
+    // Validate date
+    const billDateInput = document.getElementById('billDate');
+    if (!validateDateInput(billDateInput, 'Date Received')) {
+        return;
+    }
+
     const billData = {
-        Date_Received: document.getElementById('billDate').value,
+        Date_Received: billDateInput.value,
         Supplier_Name: document.getElementById('supplierName').value.trim(),
         Remarks: document.getElementById('billRemarks').value.trim() || null,
         items: []
@@ -281,7 +287,7 @@ async function showEditIncomingBillModal(billId) {
                     </div>
                     <div class="form-group">
                         <label>Date Received *</label>
-                        <input type="date" id="billDate" value="${bill.Date_Received.split('T')[0]}" required>
+                        <input type="date" id="billDate" value="${bill.Date_Received.split('T')[0]}" min="1900-01-01" max="2100-12-31" required>
                     </div>
                     <div class="form-group">
                         <label>Supplier Name *</label>
@@ -344,9 +350,15 @@ async function showEditIncomingBillModal(billId) {
 async function handleIncomingBillUpdate(e) {
     e.preventDefault();
 
+    // Validate date
+    const billDateInput = document.getElementById('billDate');
+    if (!validateDateInput(billDateInput, 'Date Received')) {
+        return;
+    }
+
     const billId = parseInt(document.getElementById('editBillId').value);
     const billData = {
-        Date_Received: document.getElementById('billDate').value,
+        Date_Received: billDateInput.value,
         Supplier_Name: document.getElementById('supplierName').value.trim(),
         Remarks: document.getElementById('billRemarks').value.trim() || null,
         items: []
@@ -463,7 +475,7 @@ async function showAddDonationBillModal() {
                 <h3>Bill Information</h3>
                 <div class="form-group">
                     <label>Date Received *</label>
-                    <input type="date" id="billDate" value="${getCurrentDate()}" required>
+                    <input type="date" id="billDate" value="${getCurrentDate()}" min="1900-01-01" max="2100-12-31" required>
                 </div>
                 <div class="form-group">
                     <label>Donor Name *</label>
@@ -572,8 +584,14 @@ function addDonationItemRow(item = null) {
 async function handleDonationBillSubmit(e) {
     e.preventDefault();
 
+    // Validate date
+    const billDateInput = document.getElementById('billDate');
+    if (!validateDateInput(billDateInput, 'Date Received')) {
+        return;
+    }
+
     const billData = {
-        Date_Received: document.getElementById('billDate').value,
+        Date_Received: billDateInput.value,
         Donor_Name: document.getElementById('donorName').value.trim(),
         Remarks: document.getElementById('billRemarks').value.trim() || null,
         items: []
@@ -681,7 +699,7 @@ async function showEditDonationBillModal(billId) {
                     </div>
                     <div class="form-group">
                         <label>Date Received *</label>
-                        <input type="date" id="billDate" value="${bill.Date_Received.split('T')[0]}" required>
+                        <input type="date" id="billDate" value="${bill.Date_Received.split('T')[0]}" min="1900-01-01" max="2100-12-31" required>
                     </div>
                     <div class="form-group">
                         <label>Donor Name *</label>
@@ -745,9 +763,15 @@ async function showEditDonationBillModal(billId) {
 async function handleDonationBillUpdate(e) {
     e.preventDefault();
 
+    // Validate date
+    const billDateInput = document.getElementById('billDate');
+    if (!validateDateInput(billDateInput, 'Date Received')) {
+        return;
+    }
+
     const billId = parseInt(document.getElementById('editBillId').value);
     const billData = {
-        Date_Received: document.getElementById('billDate').value,
+        Date_Received: billDateInput.value,
         Donor_Name: document.getElementById('donorName').value.trim(),
         Remarks: document.getElementById('billRemarks').value.trim() || null,
         items: []
@@ -865,7 +889,7 @@ async function showAddOutgoingBillModal() {
                 <h3>Bill Information</h3>
                 <div class="form-group">
                     <label>Date Issued *</label>
-                    <input type="date" id="billDate" value="${getCurrentDate()}" required>
+                    <input type="date" id="billDate" value="${getCurrentDate()}" min="1900-01-01" max="2100-12-31" required>
                 </div>
                 <div class="form-group">
                     <label>Center *</label>
@@ -998,6 +1022,12 @@ function addOutgoingItemRow(item = null) {
 async function handleOutgoingBillSubmit(e) {
     e.preventDefault();
 
+    // Validate date
+    const billDateInput = document.getElementById('billDate');
+    if (!validateDateInput(billDateInput, 'Date Issued')) {
+        return;
+    }
+
     const centerId = window.currentCenterSelect ? window.currentCenterSelect.getValue() : '';
     if (!centerId) {
         showNotification('Please select a center', 'error');
@@ -1005,7 +1035,7 @@ async function handleOutgoingBillSubmit(e) {
     }
 
     const billData = {
-        Date_Issued: document.getElementById('billDate').value,
+        Date_Issued: billDateInput.value,
         Center_ID: parseInt(centerId),
         Officer_Name: document.getElementById('officerName').value.trim(),
         Officer_NIC: document.getElementById('officerNIC').value.trim(),
@@ -1126,7 +1156,7 @@ async function showEditOutgoingBillModal(billId) {
                     </div>
                     <div class="form-group">
                         <label>Date Issued *</label>
-                        <input type="date" id="billDate" value="${bill.Date_Issued.split('T')[0]}" required>
+                        <input type="date" id="billDate" value="${bill.Date_Issued.split('T')[0]}" min="1900-01-01" max="2100-12-31" required>
                     </div>
                     <div class="form-group">
                         <label>Center *</label>
@@ -1222,6 +1252,12 @@ async function showEditOutgoingBillModal(billId) {
 async function handleOutgoingBillUpdate(e) {
     e.preventDefault();
 
+    // Validate date
+    const billDateInput = document.getElementById('billDate');
+    if (!validateDateInput(billDateInput, 'Date Issued')) {
+        return;
+    }
+
     const billId = parseInt(document.getElementById('editBillId').value);
     const centerId = window.currentCenterSelect ? window.currentCenterSelect.getValue() : '';
     if (!centerId) {
@@ -1230,7 +1266,7 @@ async function handleOutgoingBillUpdate(e) {
     }
 
     const billData = {
-        Date_Issued: document.getElementById('billDate').value,
+        Date_Issued: billDateInput.value,
         Center_ID: parseInt(centerId),
         Officer_Name: document.getElementById('officerName').value.trim(),
         Officer_NIC: document.getElementById('officerNIC').value.trim(),

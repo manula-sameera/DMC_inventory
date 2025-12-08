@@ -969,6 +969,51 @@ function getCurrentDate() {
     return new Date().toISOString().split('T')[0];
 }
 
+function isValidDate(dateString) {
+    if (!dateString || typeof dateString !== 'string') return false;
+    
+    // Check format YYYY-MM-DD
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(dateString)) return false;
+    
+    // Parse and validate the date
+    const date = new Date(dateString + 'T00:00:00');
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) return false;
+    
+    // Verify the date components match (prevents invalid dates like 2025-02-30)
+    const [year, month, day] = dateString.split('-').map(Number);
+    if (date.getFullYear() !== year || 
+        date.getMonth() + 1 !== month || 
+        date.getDate() !== day) {
+        return false;
+    }
+    
+    // Optional: Check reasonable date range (1900-2100)
+    if (year < 1900 || year > 2100) return false;
+    
+    return true;
+}
+
+function validateDateInput(dateInput, fieldName = 'Date') {
+    const dateValue = dateInput.value;
+    
+    if (!dateValue) {
+        showNotification(`${fieldName} is required`, 'error');
+        dateInput.focus();
+        return false;
+    }
+    
+    if (!isValidDate(dateValue)) {
+        showNotification(`Invalid ${fieldName}. Please enter a valid date`, 'error');
+        dateInput.focus();
+        return false;
+    }
+    
+    return true;
+}
+
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');

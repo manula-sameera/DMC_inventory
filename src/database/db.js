@@ -152,13 +152,24 @@ class DatabaseManager {
 
     addIncomingBill(billData) {
         const transaction = this.db.transaction((data) => {
+            // Validate date format
+            if (!data.Date_Received || !/^\d{4}-\d{2}-\d{2}$/.test(data.Date_Received)) {
+                throw new Error('Invalid Date_Received format. Expected YYYY-MM-DD');
+            }
+            
             // Generate bill number if not provided
             if (!data.Bill_Number) {
                 const prefix = 'GRN';
-                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM INCOMING_BILLS WHERE Date_Received = ?');
-                const { count } = countStmt.get(data.Date_Received);
-                data.Bill_Number = `${prefix}-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+                const dateStr = data.Date_Received.replace(/-/g, '');
+                const billPrefix = `${prefix}-${dateStr}-`;
+                const maxStmt = this.db.prepare('SELECT Bill_Number FROM INCOMING_BILLS WHERE Bill_Number LIKE ? ORDER BY Bill_Number DESC LIMIT 1');
+                const maxBill = maxStmt.get(billPrefix + '%');
+                let sequence = 1;
+                if (maxBill && maxBill.Bill_Number) {
+                    const match = maxBill.Bill_Number.match(/-([0-9]+)$/);
+                    if (match) sequence = parseInt(match[1]) + 1;
+                }
+                data.Bill_Number = `${billPrefix}${String(sequence).padStart(4, '0')}`;
             }
 
             // Insert bill header
@@ -187,6 +198,11 @@ class DatabaseManager {
 
     updateIncomingBill(billId, billData) {
         const transaction = this.db.transaction((id, data) => {
+            // Validate date format
+            if (!data.Date_Received || !/^\d{4}-\d{2}-\d{2}$/.test(data.Date_Received)) {
+                throw new Error('Invalid Date_Received format. Expected YYYY-MM-DD');
+            }
+            
             // Update bill header
             const billStmt = this.db.prepare(`
                 UPDATE INCOMING_BILLS
@@ -274,13 +290,24 @@ class DatabaseManager {
 
     addDonationBill(billData) {
         const transaction = this.db.transaction((data) => {
+            // Validate date format
+            if (!data.Date_Received || !/^\d{4}-\d{2}-\d{2}$/.test(data.Date_Received)) {
+                throw new Error('Invalid Date_Received format. Expected YYYY-MM-DD');
+            }
+            
             // Generate bill number if not provided
             if (!data.Bill_Number) {
                 const prefix = 'DON';
-                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM DONATION_BILLS WHERE Date_Received = ?');
-                const { count } = countStmt.get(data.Date_Received);
-                data.Bill_Number = `${prefix}-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+                const dateStr = data.Date_Received.replace(/-/g, '');
+                const billPrefix = `${prefix}-${dateStr}-`;
+                const maxStmt = this.db.prepare('SELECT Bill_Number FROM DONATION_BILLS WHERE Bill_Number LIKE ? ORDER BY Bill_Number DESC LIMIT 1');
+                const maxBill = maxStmt.get(billPrefix + '%');
+                let sequence = 1;
+                if (maxBill && maxBill.Bill_Number) {
+                    const match = maxBill.Bill_Number.match(/-([0-9]+)$/);
+                    if (match) sequence = parseInt(match[1]) + 1;
+                }
+                data.Bill_Number = `${billPrefix}${String(sequence).padStart(4, '0')}`;
             }
 
             // Insert bill header
@@ -309,6 +336,11 @@ class DatabaseManager {
 
     updateDonationBill(billId, billData) {
         const transaction = this.db.transaction((id, data) => {
+            // Validate date format
+            if (!data.Date_Received || !/^\d{4}-\d{2}-\d{2}$/.test(data.Date_Received)) {
+                throw new Error('Invalid Date_Received format. Expected YYYY-MM-DD');
+            }
+            
             // Update bill header
             const billStmt = this.db.prepare(`
                 UPDATE DONATION_BILLS
@@ -406,13 +438,24 @@ class DatabaseManager {
 
     addOutgoingBill(billData) {
         const transaction = this.db.transaction((data) => {
+            // Validate date format
+            if (!data.Date_Issued || !/^\d{4}-\d{2}-\d{2}$/.test(data.Date_Issued)) {
+                throw new Error('Invalid Date_Issued format. Expected YYYY-MM-DD');
+            }
+            
             // Generate bill number if not provided
             if (!data.Bill_Number) {
                 const prefix = 'DSP';
-                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM OUTGOING_BILLS WHERE Date_Issued = ?');
-                const { count } = countStmt.get(data.Date_Issued);
-                data.Bill_Number = `${prefix}-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+                const dateStr = data.Date_Issued.replace(/-/g, '');
+                const billPrefix = `${prefix}-${dateStr}-`;
+                const maxStmt = this.db.prepare('SELECT Bill_Number FROM OUTGOING_BILLS WHERE Bill_Number LIKE ? ORDER BY Bill_Number DESC LIMIT 1');
+                const maxBill = maxStmt.get(billPrefix + '%');
+                let sequence = 1;
+                if (maxBill && maxBill.Bill_Number) {
+                    const match = maxBill.Bill_Number.match(/-([0-9]+)$/);
+                    if (match) sequence = parseInt(match[1]) + 1;
+                }
+                data.Bill_Number = `${billPrefix}${String(sequence).padStart(4, '0')}`;
             }
 
             // Insert bill header
@@ -444,6 +487,11 @@ class DatabaseManager {
 
     updateOutgoingBill(billId, billData) {
         const transaction = this.db.transaction((id, data) => {
+            // Validate date format
+            if (!data.Date_Issued || !/^\d{4}-\d{2}-\d{2}$/.test(data.Date_Issued)) {
+                throw new Error('Invalid Date_Issued format. Expected YYYY-MM-DD');
+            }
+            
             // Update bill header
             const billStmt = this.db.prepare(`
                 UPDATE OUTGOING_BILLS
