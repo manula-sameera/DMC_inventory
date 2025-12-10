@@ -632,7 +632,19 @@ class DatabaseManager {
                 COALESCE(
                     (SELECT SUM(Qty_Issued) FROM OUTGOING_STOCK WHERE Item_ID = i.Item_ID),
                     0
-                ) as Current_Quantity
+                ) as Current_Quantity,
+                COALESCE(
+                    (SELECT SUM(Qty_Received) FROM INCOMING_STOCK WHERE Item_ID = i.Item_ID),
+                    0
+                ) +
+                COALESCE(
+                    (SELECT SUM(Qty_Received) FROM DONATIONS WHERE Item_ID = i.Item_ID),
+                    0
+                ) as Total_Incoming,
+                COALESCE(
+                    (SELECT SUM(Qty_Issued) FROM OUTGOING_STOCK WHERE Item_ID = i.Item_ID),
+                    0
+                ) as Total_Outgoing
             FROM ITEMS_MASTER i
             WHERE i.Status = 'Active'
         `;
