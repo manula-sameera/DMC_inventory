@@ -165,7 +165,7 @@ ipcMain.handle('db:import', async () => {
 // IPC Handlers for Reports
 ipcMain.handle('reports:generatePDF', async (event, options) => {
     try {
-        const { reportType, selectedItemIds, dateFrom, dateTo } = options;
+        const { reportType, selectedItemIds, dateFrom, dateTo, centerId } = options;
         
         // Get default downloads folder
         const downloadsPath = app.getPath('downloads');
@@ -233,6 +233,23 @@ ipcMain.handle('reports:generatePDF', async (event, options) => {
                 data = db.getCarePackageIssuesReport(dateFrom, dateTo);
                 reportPath = await pdfGenerator.generateCarePackagesReport(
                     data,
+                    { from: dateFrom, to: dateTo },
+                    outputPath
+                );
+                break;
+
+            case 'center-wise-items':
+                if (!centerId) {
+                    return { success: false, error: 'Center ID is required' };
+                }
+                const centerInfo = db.getCenterById(centerId);
+                if (!centerInfo) {
+                    return { success: false, error: 'Center not found' };
+                }
+                data = db.getCenterWiseItemsReport(centerId, dateFrom, dateTo);
+                reportPath = await pdfGenerator.generateCenterWiseItemsReport(
+                    data,
+                    centerInfo.Center_Name,
                     { from: dateFrom, to: dateTo },
                     outputPath
                 );

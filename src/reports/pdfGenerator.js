@@ -627,6 +627,78 @@ class PDFGenerator {
             }
         });
     }
+
+    // Generate Center-Wise Items Report
+    async generateCenterWiseItemsReport(data, centerName, dateRange, outputPath) {
+        return new Promise((resolve, reject) => {
+            try {
+                const doc = this.createDocument();
+                const stream = fs.createWriteStream(outputPath);
+                
+                doc.pipe(stream);
+                
+                // Add header
+                let subtitle = `Items Issued to ${this.ensureString(centerName)}`;
+                if (dateRange && dateRange.from && dateRange.to) {
+                    subtitle += `\nPeriod: ${dateRange.from} to ${dateRange.to}`;
+                }
+                this.addHeader(doc, 'Center-Wise Items Report', subtitle);
+                
+                // Prepare table data
+                const headers = ['Item Name', 'Unit', 'Total Quantity Issued', 'Number of Issues'];
+                const columnWidths = [200, 80, 130, 120];
+                
+                const rows = data.map(item => [
+                    this.ensureString(item.Item_Name),
+                    this.ensureString(item.Unit_Measure),
+                    item.Total_Quantity || 0,
+                    item.Issue_Count || 0
+                ]);
+                
+                // Draw table
+                this.drawTable(doc, headers, rows, columnWidths);
+                
+                // Add summary
+                doc.moveDown(2);
+                doc.fontSize(10).font(this.getFont(true)).text('Summary:', { underline: true });
+                doc.fontSize(9).font(this.getFont(false));
+                doc.text(`Center: ${this.ensureString(centerName)}`);
+                doc.text(`Total Item Types: ${data.length}`);
+                const totalQuantity = data.reduce((sum, item) => sum + (item.Total_Quantity || 0), 0);
+                doc.text(`Total Quantity Issued: ${totalQuantity}`);
+                const totalIssues = data.reduce((sum, item) => sum + (item.Issue_Count || 0), 0);
+                doc.text(`Total Number of Issues: ${totalIssues}`);
+                
+                // Top 5 items by quantity
+                if (data.length > 0) {
+                    doc.moveDown();
+                    doc.font(this.getFont(true)).text('Top Items by Quantity:', { underline: true });
+                    doc.font(this.getFont(false));
+                    
+                    const topItems = [...data]
+                        .sort((a, b) => (b.Total_Quantity || 0) - (a.Total_Quantity || 0))
+                        .slice(0, 5);
+                    
+                    topItems.forEach((item, index) => {
+                        doc.text(`  ${index + 1}. ${this.ensureString(item.Item_Name)}: ${item.Total_Quantity} ${this.ensureString(item.Unit_Measure)}`);
+                    });
+                }
+                
+                // Add page numbers
+                const range = doc.bufferedPageRange();
+                for (let i = 0; i < range.count; i++) {
+                    doc.switchToPage(i);
+                    this.addFooter(doc, i + 1, range.count);
+                }
+                
+                doc.end();
+                stream.on('finish', () => resolve(outputPath));
+                stream.on('error', reject);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
 }
 
 module.exports = new PDFGenerator();

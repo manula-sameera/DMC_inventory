@@ -1205,15 +1205,39 @@ function setupReportsEventListeners() {
     const selectAllItems = document.getElementById('selectAllItems');
     const itemSelectionSection = document.getElementById('itemSelectionSection');
     const dateRangeSection = document.getElementById('dateRangeSection');
+    const centerSelectionSection = document.getElementById('centerSelectionSection');
     const generateReportBtn = document.getElementById('generateReportBtn');
+
+    // Load centers for center-wise report
+    loadCentersForReport();
 
     // Report type change
     reportType.addEventListener('change', () => {
         const type = reportType.value;
+        const selectAllItemsGroup = selectAllItems.closest('.form-group');
+        
         if (type === 'current-stock') {
             dateRangeSection.style.display = 'none';
+            centerSelectionSection.style.display = 'none';
+            selectAllItemsGroup.style.display = 'block';
+            itemSelectionSection.style.display = 'none';
+        } else if (type === 'center-wise-items') {
+            dateRangeSection.style.display = 'block';
+            centerSelectionSection.style.display = 'block';
+            selectAllItemsGroup.style.display = 'none';
+            itemSelectionSection.style.display = 'none';
+            selectAllItems.checked = true;
+            // Set default dates
+            const today = new Date().toISOString().split('T')[0];
+            const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            document.getElementById('reportDateFrom').value = monthAgo;
+            document.getElementById('reportDateTo').value = today;
         } else {
             dateRangeSection.style.display = 'block';
+            centerSelectionSection.style.display = 'none';
+            selectAllItemsGroup.style.display = 'block';
+            selectAllItems.checked = true;
+            itemSelectionSection.style.display = 'none';
             // Set default dates
             const today = new Date().toISOString().split('T')[0];
             const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -1243,7 +1267,7 @@ async function generateReport() {
         const selectAllItems = document.getElementById('selectAllItems').checked;
         
         let selectedItemIds = null;
-        if (!selectAllItems) {
+        if (!selectAllItems && reportType !== 'center-wise-items') {
             selectedItemIds = Array.from(document.querySelectorAll('.item-checkbox:checked'))
                 .map(cb => parseInt(cb.value));
             
@@ -1255,6 +1279,16 @@ async function generateReport() {
 
         const dateFrom = document.getElementById('reportDateFrom').value;
         const dateTo = document.getElementById('reportDateTo').value;
+
+        // Validate center selection for center-wise report
+        let centerId = null;
+        if (reportType === 'center-wise-items') {
+            centerId = document.getElementById('reportCenter').value;
+            if (!centerId) {
+                showNotification('Please select a center', 'error');
+                return;
+            }
+        }
 
         // Validate date range for time-based reports
         if (reportType !== 'current-stock') {
@@ -1274,7 +1308,8 @@ async function generateReport() {
             reportType,
             selectedItemIds,
             dateFrom,
-            dateTo
+            dateTo,
+            centerId
         });
 
         if (result.success) {
@@ -1285,6 +1320,28 @@ async function generateReport() {
     } catch (error) {
         console.error('Error generating report:', error);
         showNotification('Failed to generate report', 'error');
+    }
+}
+
+async function loadCentersForReport() {
+    try {
+        const centers = await window.api.centers.getAll();
+        const centerSelect = document.getElementById('reportCenter');
+        
+        // Clear existing options except the first one
+        centerSelect.innerHTML = '<option value="">-- Select Center --</option>';
+        
+        // Add active centers
+        centers
+            .filter(center => center.Status === 'Active')
+            .forEach(center => {
+                const option = document.createElement('option');
+                option.value = center.Center_ID;
+                option.textContent = center.Center_Name;
+                centerSelect.appendChild(option);
+            });
+    } catch (error) {
+        console.error('Error loading centers for report:', error);
     }
 }
 

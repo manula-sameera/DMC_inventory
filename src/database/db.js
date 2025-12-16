@@ -84,6 +84,16 @@ class DatabaseManager {
         return stmt.all();
     }
 
+    getCenterById(centerId) {
+        const stmt = this.db.prepare(`
+            SELECT c.*, g.GN_Division_Name 
+            FROM CENTERS_MASTER c
+            LEFT JOIN GN_DIVISIONS g ON c.GN_ID = g.GN_ID
+            WHERE c.Center_ID = ?
+        `);
+        return stmt.get(centerId);
+    }
+
     getActiveCenters() {
         const stmt = this.db.prepare(`
             SELECT c.*, g.GN_Division_Name 
@@ -1033,6 +1043,41 @@ class DatabaseManager {
         }
         
         query += ` ORDER BY cpi.Date_Issued DESC, cpt.Package_Name, i.Item_Name`;
+        
+        const stmt = this.db.prepare(query);
+        return stmt.all(...params);
+    }
+
+    // Get center-wise items issued report
+    getCenterWiseItemsReport(centerId, dateFrom, dateTo) {
+        let query = `
+            SELECT 
+                i.Item_Name,
+                i.Unit_Measure,
+                SUM(ost.Qty_Issued) as Total_Quantity,
+                COUNT(DISTINCT ob.Bill_ID) as Issue_Count
+            FROM OUTGOING_STOCK ost
+            JOIN ITEMS_MASTER i ON ost.Item_ID = i.Item_ID
+            JOIN OUTGOING_BILLS ob ON ost.Bill_ID = ob.Bill_ID
+            WHERE ob.Center_ID = ?
+        `;
+        
+        const params = [centerId];
+        
+        if (dateFrom) {
+            query += ` AND DATE(ob.Date_Issued) >= DATE(?)`;
+            params.push(dateFrom);
+        }
+        
+        if (dateTo) {
+            query += ` AND DATE(ob.Date_Issued) <= DATE(?)`;
+            params.push(dateTo);
+        }
+        
+        query += ` 
+            GROUP BY i.Item_ID, i.Item_Name, i.Unit_Measure
+            ORDER BY Total_Quantity DESC
+        `;
         
         const stmt = this.db.prepare(query);
         return stmt.all(...params);
