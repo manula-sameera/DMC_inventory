@@ -127,6 +127,22 @@ Can't find what you need? Check the `docs/README.md` (the docs index) or open an
 
 Thanks for contributing — maintainers will review PRs as soon as possible.
 
+## Screenshots
+
+<p align="center">
+  <img src="assets/screenshots/screenshot-1.png" width="700" alt="Main window">
+    <img src="assets/screenshots/screenshot-2.png" width="700" alt="Incoming stock">
+  <img src="assets/screenshots/screenshot-3.png" width="700" alt="Dispatch screen">
+  <img src="assets/screenshots/screenshot-4.png" width="700" alt="Dispatch screen">
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/screenshot-5.png" width="700" alt="Incoming stock">
+  <img src="assets/screenshots/screenshot-6.png" width="700" alt="Dispatch screen">
+  <img src="assets/screenshots/screenshot-7.png" width="700" alt="Dispatch screen">
+  <img src="assets/screenshots/screenshot-8.png" width="700" alt="Dispatch screen">
+</p>
+
 ## License
 
 MIT
