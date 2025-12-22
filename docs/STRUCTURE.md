@@ -44,20 +44,24 @@ DMC_inventory/
 ## Key Files Explained
 
 ### Main Process (Backend)
+
 - **main.js**: Entry point, creates window, manages IPC
 - **preload.js**: Secure bridge between main and renderer
 - **db.js**: All database operations
 
 ### Renderer Process (Frontend)
+
 - **index.html**: User interface structure
 - **styles.css**: Visual styling
 - **app.js**: All frontend logic and event handlers
 
 ### Database
+
 - **schema.sql**: Table definitions and views
 - Database file created at runtime: `%AppData%/dmc-inventory/dmc_inventory.db`
 
 ### Configuration
+
 - **package.json**: App metadata, dependencies, build config
 - **installer.iss**: Windows installer configuration
 

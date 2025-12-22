@@ -5,6 +5,7 @@
 ## For Developers
 
 ### Key Files
+
 - `src/renderer/bill-functions.js` - All bill logic (25 functions)
 - `src/renderer/styles.css` - Bill styles (lines 681-971)
 - `src/renderer/index.html` - Script include (line 375)

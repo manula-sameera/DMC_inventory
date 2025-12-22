@@ -5,6 +5,7 @@
 ## Overview
 
 The database structure has been updated from **item-by-item entry** to **bill-based entry** for all three transaction types:
+
 - Incoming Stock (Goods Received)
 - Donations
 - Outgoing Stock (Dispatch)

@@ -5,11 +5,13 @@
 ## Installation and First Run
 
 ### Step 1: Install Dependencies
+
 ```powershell
 npm install
 ```
 
 ### Step 2: Run the Application
+
 ```powershell
 npm start
 ```
@@ -27,12 +29,14 @@ When you first run the application:
 ### 1. Setup Master Data
 
 **Add Items:**
+
 - Click "Items Master" in sidebar
 - Click "Add Item"
 - Enter: Rice, KG, Food, Reorder Level: 100
 - Repeat for other items
 
 **Add Centers:**
+
 - Click "Centers Master"
 - Click "Add Center"
 - Enter center details
