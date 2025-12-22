@@ -113,9 +113,7 @@ npm run build:win
 All project documentation is collected in the `docs/` directory for easy navigation. Key documents include:
 
 - `docs/QUICKSTART.md` — Quick start guide for users and developers
-- `docs/API_QUICK_REFERENCE.md` — API reference and implementation notes
 - `docs/DEPLOYMENT.md` — Build & installer instructions
-- `docs/TESTING_GUIDE.md` — Testing instructions and checklists
 
 Can't find what you need? Check the `docs/README.md` (the docs index) or open an issue.
 
