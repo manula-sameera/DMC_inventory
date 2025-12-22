@@ -108,10 +108,28 @@ npm run build:win
 - **HTML/CSS/JavaScript**: User interface
 - **Inno Setup**: Windows installer
 
+## Documentation
+
+All project documentation is collected in the `docs/` directory for easy navigation. Key documents include:
+
+- `docs/QUICKSTART.md` — Quick start guide for users and developers
+- `docs/API_QUICK_REFERENCE.md` — API reference and implementation notes
+- `docs/DEPLOYMENT.md` — Build & installer instructions
+- `docs/TESTING_GUIDE.md` — Testing instructions and checklists
+
+Can't find what you need? Check the `docs/README.md` (the docs index) or open an issue.
+
+## Contributing — Issues & Pull Requests
+
+- Found an issue or have a suggestion? Open an **issue** with a concise title, steps to reproduce (for bugs), or a short feature description. Use labels such as `bug`, `enhancement`, or `documentation`.
+- Planning to work on a fix or feature? Create a branch named `fix/<short-desc>` or `feature/<short-desc>`.
+- Before opening a PR, verify the project builds (e.g., `npm install` and `npm run build`) and run any available tests.
+- Open a **pull request** with a clear title, a link to the related issue (if any), a short description of the change, and testing steps; include screenshots when helpful.
+- Prefer small, focused PRs. For large changes, open a draft PR early to get feedback.
+
+Thanks for contributing — maintainers will review PRs as soon as possible.
+
 ## License
 
 MIT
 
-## Support
-
-For issues or questions, contact the DMC IT Department.
