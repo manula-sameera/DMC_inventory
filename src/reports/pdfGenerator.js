@@ -349,21 +349,40 @@ class PDFGenerator {
                 doc.fontSize(9).font(this.getFont(false));
                 doc.text(`Total Transactions: ${data.length}`);
                 
-                // Group by item
+                // Group by item and collect units and bill counts
                 const itemSummary = {};
                 data.forEach(item => {
                     const itemName = this.ensureString(item.Item_Name);
+                    const unit = this.ensureString(item.Unit_Measure || '');
+                    const bill = this.ensureString(item.Bill_Number || '');
                     if (!itemSummary[itemName]) {
-                        itemSummary[itemName] = 0;
+                        itemSummary[itemName] = { qty: 0, unit: unit, bills: new Set() };
                     }
-                    itemSummary[itemName] += item.Quantity;
+                    itemSummary[itemName].qty += item.Quantity;
+                    // prefer first non-empty unit found
+                    if (!itemSummary[itemName].unit && unit) {
+                        itemSummary[itemName].unit = unit;
+                    }
+                    if (bill) {
+                        itemSummary[itemName].bills.add(bill);
+                    }
                 });
                 
-                doc.moveDown();
-                doc.text('Total Received by Item:');
-                Object.entries(itemSummary).forEach(([itemName, qty]) => {
-                    doc.text(`  ${this.ensureString(itemName)}: ${qty}`);
-                });
+                // Prepare summary table rows
+                const summaryHeaders = ['Item', 'Unit', 'Total Received', 'Bill Count'];
+                const summaryRows = Object.entries(itemSummary).map(([itemName, info]) => [
+                    this.ensureString(itemName),
+                    this.ensureString(info.unit || ''),
+                    info.qty,
+                    info.bills.size || 0
+                ]);
+                
+                if (summaryRows.length > 0) {
+                    doc.moveDown();
+                    doc.font(this.getFont(true)).text('Total Received by Item:', { underline: true });
+                    // Render as a table with columns: Item, Unit, Total Received, Bill Count
+                    this.drawTable(doc, summaryHeaders, summaryRows, [220, 80, 80, 80]);
+                }
                 
                 // Add page numbers
                 const range = doc.bufferedPageRange();
@@ -424,21 +443,38 @@ class PDFGenerator {
                 doc.fontSize(9).font(this.getFont(false));
                 doc.text(`Total Transactions: ${data.length}`);
                 
-                // Group by item
+                // Group by item and collect units and bill counts
                 const itemSummary = {};
                 data.forEach(item => {
                     const itemName = this.ensureString(item.Item_Name);
+                    const unit = this.ensureString(item.Unit_Measure || '');
+                    const bill = this.ensureString(item.Bill_Number || '');
                     if (!itemSummary[itemName]) {
-                        itemSummary[itemName] = 0;
+                        itemSummary[itemName] = { qty: 0, unit: unit, bills: new Set() };
                     }
-                    itemSummary[itemName] += item.Quantity;
+                    itemSummary[itemName].qty += item.Quantity;
+                    if (!itemSummary[itemName].unit && unit) {
+                        itemSummary[itemName].unit = unit;
+                    }
+                    if (bill) {
+                        itemSummary[itemName].bills.add(bill);
+                    }
                 });
                 
-                doc.moveDown();
-                doc.text('Total Dispatched by Item:');
-                Object.entries(itemSummary).forEach(([itemName, qty]) => {
-                    doc.text(`  ${this.ensureString(itemName)}: ${qty}`);
-                });
+                // Prepare summary table rows
+                const summaryHeaders = ['Item', 'Unit', 'Total Dispatched', 'Bill Count'];
+                const summaryRows = Object.entries(itemSummary).map(([itemName, info]) => [
+                    this.ensureString(itemName),
+                    this.ensureString(info.unit || ''),
+                    info.qty,
+                    info.bills.size || 0
+                ]);
+                
+                if (summaryRows.length > 0) {
+                    doc.moveDown();
+                    doc.font(this.getFont(true)).text('Total Dispatched by Item:', { underline: true });
+                    this.drawTable(doc, summaryHeaders, summaryRows, [220, 80, 80, 80]);
+                }
                 
                 // Add page numbers
                 const range = doc.bufferedPageRange();
@@ -498,21 +534,38 @@ class PDFGenerator {
                 doc.fontSize(9).font(this.getFont(false));
                 doc.text(`Total Donations: ${data.length}`);
                 
-                // Group by item
+                // Group by item and collect units and bill counts
                 const itemSummary = {};
                 data.forEach(item => {
                     const itemName = this.ensureString(item.Item_Name);
+                    const unit = this.ensureString(item.Unit_Measure || '');
+                    const bill = this.ensureString(item.Bill_Number || '');
                     if (!itemSummary[itemName]) {
-                        itemSummary[itemName] = 0;
+                        itemSummary[itemName] = { qty: 0, unit: unit, bills: new Set() };
                     }
-                    itemSummary[itemName] += item.Quantity;
+                    itemSummary[itemName].qty += item.Quantity;
+                    if (!itemSummary[itemName].unit && unit) {
+                        itemSummary[itemName].unit = unit;
+                    }
+                    if (bill) {
+                        itemSummary[itemName].bills.add(bill);
+                    }
                 });
                 
-                doc.moveDown();
-                doc.text('Total Donated by Item:');
-                Object.entries(itemSummary).forEach(([itemName, qty]) => {
-                    doc.text(`  ${this.ensureString(itemName)}: ${qty}`);
-                });
+                // Prepare summary table rows
+                const summaryHeaders = ['Item', 'Unit', 'Total Donated', 'Bill Count'];
+                const summaryRows = Object.entries(itemSummary).map(([itemName, info]) => [
+                    this.ensureString(itemName),
+                    this.ensureString(info.unit || ''),
+                    info.qty,
+                    info.bills.size || 0
+                ]);
+                
+                if (summaryRows.length > 0) {
+                    doc.moveDown();
+                    doc.font(this.getFont(true)).text('Total Donated by Item:', { underline: true });
+                    this.drawTable(doc, summaryHeaders, summaryRows, [220, 80, 80, 80]);
+                }
                 
                 // Group by donor
                 const donorCount = {};
