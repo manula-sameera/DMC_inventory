@@ -1,5 +1,11 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
+
+// Ensure proper Windows taskbar and notification icon behavior
+if (process.platform === 'win32') {
+    app.setAppUserModelId('com.dmc.inventory');
+}
+
 const fs = require('fs');
 const db = require('./database/db');
 const pdfGenerator = require('./reports/pdfGenerator');

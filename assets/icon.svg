@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="DMC Inventory Icon">
+
+  <!-- simple rounded square background -->
+  <rect width="256" height="256" rx="40" fill="#0a74a6" />
+
+  <!-- minimal token (small white rounded square with a box glyph) -->
+  <g transform="translate(36,36)">
+    <rect x="0" y="0" width="56" height="56" rx="10" fill="#ffffff" />
+    <!-- tiny box glyph inside token -->
+    <path d="M12 20 L28 12 L44 20 L28 28 Z" fill="#0a74a6"/>
+    <rect x="12" y="28" width="32" height="6" rx="1" fill="#0a74a6" />
+  </g>
+
+  <!-- centered letters -->
+  <text x="152" y="152" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="72" text-anchor="middle" fill="#ffffff">DMC</text>
+
+</svg>

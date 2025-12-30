@@ -7,7 +7,9 @@
     "start": "electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "icon:generate": "node scripts/generate-icons.js",
+    "prebuild": "npm run icon:generate"
   },
   "keywords": [
     "inventory",
@@ -18,7 +20,10 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "png-to-ico": "^1.0.0",
+    "sharp": "^0.32.1",
+    "to-ico": "^1.1.5"
   },
   "dependencies": {
     "better-sqlite3": "^9.2.2",
@@ -29,6 +34,7 @@
     "appId": "com.dmc.inventory",
     "productName": "DMC Inventory System",
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "portable",
