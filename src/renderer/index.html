@@ -168,6 +168,11 @@
                 <div id="incoming-page" class="page">
                     <div class="page-actions">
                         <button id="addIncomingBillBtn" class="btn btn-primary">➕ Add Incoming Bill (GRN)</button>
+                        <button id="exportIncomingBtn" class="btn btn-secondary">📤 Export CSV</button>
+                        <label style="margin-left:10px;">
+                            <input type="checkbox" id="includeSummaryIncoming" checked>
+                            Include Summary
+                        </label>
                     </div>
                     <div class="card">
                         <div class="table-container">
@@ -193,6 +198,11 @@
                 <div id="donations-page" class="page">
                     <div class="page-actions">
                         <button id="addDonationBillBtn" class="btn btn-primary">➕ Add Donation Bill</button>
+                        <button id="exportDonationsBtn" class="btn btn-secondary">📤 Export CSV</button>
+                        <label style="margin-left:10px;">
+                            <input type="checkbox" id="includeSummaryDonations" checked>
+                            Include Summary
+                        </label>
                     </div>
                     <div class="card">
                         <div class="table-container">
@@ -218,6 +228,11 @@
                 <div id="outgoing-page" class="page">
                     <div class="page-actions">
                         <button id="addOutgoingBillBtn" class="btn btn-primary">➕ Add Dispatch Bill</button>
+                        <button id="exportOutgoingBtn" class="btn btn-secondary">📤 Export CSV</button>
+                        <label style="margin-left:10px;">
+                            <input type="checkbox" id="includeSummaryOutgoing" checked>
+                            Include Summary
+                        </label>
                     </div>
                     <div class="card">
                         <div class="table-container">
@@ -434,6 +449,11 @@
 
                         <div class="form-actions">
                             <button id="generateReportBtn" class="btn btn-primary">📄 Generate PDF Report</button>
+                            <button id="exportCsvBtn" class="btn btn-secondary">📤 Export CSV</button>
+                            <label style="margin-left:10px;">
+                                <input type="checkbox" id="includeSummaryCsv" checked>
+                                Include Summary CSV
+                            </label>
                         </div>
                     </div>
 

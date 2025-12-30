@@ -110,8 +110,15 @@ contextBridge.exposeInMainWorld('api', {
 
     // Reports API
     reports: {
-        generatePDF: (options) => ipcRenderer.invoke('reports:generatePDF', options)
+        generatePDF: (options) => ipcRenderer.invoke('reports:generatePDF', options),
+        exportCSV: (options) => ipcRenderer.invoke('reports:exportCSV', options)
     },
+
+    // App events from main
+    appEvents: {
+        onOpenReports: (callback) => ipcRenderer.on('app:openReports', callback)
+    },
+
 
     // Bulk Upload API
     bulkUpload: {

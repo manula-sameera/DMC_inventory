@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const db = require('./database/db');
@@ -29,12 +29,43 @@ app.whenReady().then(async () => {
         
         db.initialize();
         createWindow();
+        buildAppMenu();
 
         app.on('activate', () => {
             if (BrowserWindow.getAllWindows().length === 0) {
                 createWindow();
             }
         });
+
+        function buildAppMenu() {
+            try {
+                const template = [
+                    {
+                        label: 'File',
+                        submenu: [
+                            { role: 'quit' }
+                        ]
+                    },
+                    {
+                        label: 'Reports',
+                        submenu: [
+                            {
+                                label: 'Open Reports',
+                                accelerator: 'CmdOrCtrl+R',
+                                click: () => {
+                                    if (mainWindow) mainWindow.webContents.send('app:openReports');
+                                }
+                            }
+                        ]
+                    },
+                    { role: 'help', submenu: [ { label: 'Learn More', click: () => require('electron').shell.openExternal('https://github.com') } ] }
+                ];
+                const menu = Menu.buildFromTemplate(template);
+                Menu.setApplicationMenu(menu);
+            } catch (err) {
+                console.error('Failed to build application menu:', err);
+            }
+        }
     } catch (error) {
         console.error('Failed to initialize app:', error);
         app.quit();
@@ -262,6 +293,79 @@ ipcMain.handle('reports:generatePDF', async (event, options) => {
         return { success: true, path: reportPath };
     } catch (error) {
         console.error('Error generating PDF report:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// IPC Handler to export CSVs for reports
+ipcMain.handle('reports:exportCSV', async (event, options) => {
+    try {
+        const { reportType, selectedItemIds, dateFrom, dateTo, centerId, includeSummary } = options || {};
+        const downloadsPath = app.getPath('downloads');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+        const defaultFileName = `DMC_${reportType}_${timestamp}.csv`;
+
+        const result = await dialog.showSaveDialog(mainWindow, {
+            title: 'Save CSV Report',
+            defaultPath: path.join(downloadsPath, defaultFileName),
+            filters: [
+                { name: 'CSV Files', extensions: ['csv'] },
+                { name: 'All Files', extensions: ['*'] }
+            ]
+        });
+
+        if (result.canceled || !result.filePath) {
+            return { success: false, canceled: true };
+        }
+
+        const outputPath = result.filePath;
+        let data, exportResult;
+
+        switch (reportType) {
+            case 'current-stock':
+                data = db.getCurrentStockReport(selectedItemIds);
+                exportResult = await pdfGenerator.exportCurrentStockCSV(data, selectedItemIds, outputPath, { includeSummary: !!includeSummary });
+                break;
+
+            case 'incoming':
+                data = db.getIncomingStockReport(dateFrom, dateTo, selectedItemIds);
+                exportResult = await pdfGenerator.exportIncomingCSV(data, { from: dateFrom, to: dateTo }, selectedItemIds, outputPath, { includeSummary: !!includeSummary });
+                break;
+
+            case 'outgoing':
+                data = db.getOutgoingStockReport(dateFrom, dateTo, selectedItemIds);
+                exportResult = await pdfGenerator.exportOutgoingCSV(data, { from: dateFrom, to: dateTo }, selectedItemIds, outputPath, { includeSummary: !!includeSummary });
+                break;
+
+            case 'donations':
+                data = db.getDonationsReport(dateFrom, dateTo, selectedItemIds);
+                exportResult = await pdfGenerator.exportDonationsCSV(data, { from: dateFrom, to: dateTo }, selectedItemIds, outputPath, { includeSummary: !!includeSummary });
+                break;
+
+            case 'care-packages':
+                data = db.getCarePackageIssuesReport(dateFrom, dateTo);
+                exportResult = await pdfGenerator.exportCarePackagesCSV(data, { from: dateFrom, to: dateTo }, outputPath, { includeSummary: !!includeSummary });
+                break;
+
+            case 'center-wise-items':
+                if (!centerId) {
+                    return { success: false, error: 'Center ID is required' };
+                }
+                const centerInfo = db.getCenterById(centerId);
+                if (!centerInfo) {
+                    return { success: false, error: 'Center not found' };
+                }
+                data = db.getCenterWiseItemsReport(centerId, dateFrom, dateTo);
+                exportResult = await pdfGenerator.exportCenterWiseItemsCSV(data, centerInfo.Center_Name, { from: dateFrom, to: dateTo }, outputPath, { includeSummary: !!includeSummary });
+                break;
+
+            default:
+                return { success: false, error: 'Invalid report type' };
+        }
+
+        return { success: true, paths: exportResult };
+    } catch (error) {
+        console.error('Error exporting CSV report:', error);
         return { success: false, error: error.message };
     }
 });

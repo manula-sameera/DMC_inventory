@@ -1,6 +1,6 @@
 {
   "name": "dmc-inventory",
-  "version": "1.0.0",
+  "version": "1.14.0",
   "description": "Disaster Management Center Inventory System",
   "main": "src/main.js",
   "scripts": {
@@ -14,7 +14,7 @@
     "disaster-management",
     "electron"
   ],
-  "author": "DMC",
+  "author": "Manula Sameera",
   "license": "MIT",
   "devDependencies": {
     "electron": "^28.0.0",

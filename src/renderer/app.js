@@ -188,16 +188,33 @@ function initializeEventListeners() {
 
     // Incoming Stock Bills
     document.getElementById('addIncomingBillBtn').addEventListener('click', showAddIncomingBillModal);
+    // Export Incoming CSV
+    const exportIncomingBtn = document.getElementById('exportIncomingBtn');
+    if (exportIncomingBtn) exportIncomingBtn.addEventListener('click', exportIncomingCsv);
 
     // Donation Bills
     document.getElementById('addDonationBillBtn').addEventListener('click', showAddDonationBillModal);
+    // Export Donations CSV
+    const exportDonationsBtn = document.getElementById('exportDonationsBtn');
+    if (exportDonationsBtn) exportDonationsBtn.addEventListener('click', exportDonationsCsv);
 
     // Outgoing Stock Bills
     document.getElementById('addOutgoingBillBtn').addEventListener('click', showAddOutgoingBillModal);
+    // Export Outgoing CSV
+    const exportOutgoingBtn = document.getElementById('exportOutgoingBtn');
+    if (exportOutgoingBtn) exportOutgoingBtn.addEventListener('click', exportOutgoingCsv);
 
     // Settings
     document.getElementById('exportDbBtn').addEventListener('click', exportDatabase);
     document.getElementById('importDbBtn').addEventListener('click', importDatabase);
+
+    // Listen for menu event to open Reports
+    if (window.api && window.api.appEvents && window.api.appEvents.onOpenReports) {
+        window.api.appEvents.onOpenReports(() => {
+            switchPage('reports');
+            showNotification('Reports page opened from menu', 'info');
+        });
+    }
 
     // Modal close
     document.querySelector('.close').addEventListener('click', closeModal);
@@ -1207,6 +1224,8 @@ function setupReportsEventListeners() {
     const dateRangeSection = document.getElementById('dateRangeSection');
     const centerSelectionSection = document.getElementById('centerSelectionSection');
     const generateReportBtn = document.getElementById('generateReportBtn');
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const includeSummaryCsv = document.getElementById('includeSummaryCsv');
 
     // Load centers for center-wise report
     loadCentersForReport();
@@ -1259,6 +1278,8 @@ function setupReportsEventListeners() {
 
     // Generate report button
     generateReportBtn.addEventListener('click', generateReport);
+    // Export CSV button
+    exportCsvBtn.addEventListener('click', exportCsvReport);
 }
 
 async function generateReport() {
@@ -1320,6 +1341,162 @@ async function generateReport() {
     } catch (error) {
         console.error('Error generating report:', error);
         showNotification('Failed to generate report', 'error');
+    }
+}
+
+// Export CSV report
+async function exportCsvReport() {
+    try {
+        const reportType = document.getElementById('reportType').value;
+        const selectAllItems = document.getElementById('selectAllItems').checked;
+        
+        let selectedItemIds = null;
+        if (!selectAllItems && reportType !== 'center-wise-items') {
+            selectedItemIds = Array.from(document.querySelectorAll('.item-checkbox:checked'))
+                .map(cb => parseInt(cb.value));
+            
+            if (selectedItemIds.length === 0) {
+                showNotification('Please select at least one item', 'error');
+                return;
+            }
+        }
+
+        const dateFrom = document.getElementById('reportDateFrom').value;
+        const dateTo = document.getElementById('reportDateTo').value;
+
+        // Validate center selection for center-wise report
+        let centerId = null;
+        if (reportType === 'center-wise-items') {
+            centerId = document.getElementById('reportCenter').value;
+            if (!centerId) {
+                showNotification('Please select a center', 'error');
+                return;
+            }
+        }
+
+        // Validate date range for time-based reports
+        if (reportType !== 'current-stock') {
+            if (!dateFrom || !dateTo) {
+                showNotification('Please select date range', 'error');
+                return;
+            }
+            if (dateFrom > dateTo) {
+                showNotification('From date cannot be after To date', 'error');
+                return;
+            }
+        }
+
+        const includeSummary = document.getElementById('includeSummaryCsv').checked;
+
+        showNotification('Exporting CSV...', 'info');
+
+        const result = await window.api.reports.exportCSV({
+            reportType,
+            selectedItemIds,
+            dateFrom,
+            dateTo,
+            centerId,
+            includeSummary
+        });
+
+        if (result.success) {
+            showNotification('CSV export successful', 'success');
+            if (result.paths) {
+                // If paths is an object with multiple files
+                if (typeof result.paths === 'string') {
+                    showNotification('CSV saved to: ' + result.paths, 'success');
+                } else if (result.paths.data || result.paths.summary || result.paths.donors || result.paths.top || result.paths.items) {
+                    const parts = [];
+                    if (result.paths.data) parts.push('Data: ' + result.paths.data);
+                    if (result.paths.summary) parts.push('Summary: ' + result.paths.summary);
+                    if (result.paths.donors) parts.push('Donors: ' + result.paths.donors);
+                    if (result.paths.top) parts.push('Top Items: ' + result.paths.top);
+                    if (result.paths.items) parts.push('Items Summary: ' + result.paths.items);
+                    showNotification(parts.join('\n'), 'success');
+                } else {
+                    showNotification('CSV saved', 'success');
+                }
+            }
+        } else if (result.canceled) {
+            showNotification('CSV export canceled', 'info');
+        } else {
+            showNotification('Failed to export CSV: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error exporting CSV:', error);
+        showNotification('Failed to export CSV', 'error');
+    }
+}
+
+// Export current incoming bills as CSV
+async function exportIncomingCsv() {
+    try {
+        const includeSummary = document.getElementById('includeSummaryIncoming').checked;
+        showNotification('Exporting Incoming CSV...', 'info');
+
+        const result = await window.api.reports.exportCSV({
+            reportType: 'incoming',
+            includeSummary
+        });
+
+        if (result.success) {
+            showNotification('Incoming CSV export successful', 'success');
+        } else if (result.canceled) {
+            showNotification('Incoming CSV export canceled', 'info');
+        } else {
+            showNotification('Failed to export incoming CSV: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error exporting incoming CSV:', error);
+        showNotification('Failed to export incoming CSV', 'error');
+    }
+}
+
+// Export current donations bills as CSV
+async function exportDonationsCsv() {
+    try {
+        const includeSummary = document.getElementById('includeSummaryDonations').checked;
+        showNotification('Exporting Donations CSV...', 'info');
+
+        const result = await window.api.reports.exportCSV({
+            reportType: 'donations',
+            includeSummary
+        });
+
+        if (result.success) {
+            showNotification('Donations CSV export successful', 'success');
+        } else if (result.canceled) {
+            showNotification('Donations CSV export canceled', 'info');
+        } else {
+            showNotification('Failed to export donations CSV: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error exporting donations CSV:', error);
+        showNotification('Failed to export donations CSV', 'error');
+    }
+}
+
+// Export current outgoing bills as CSV
+async function exportOutgoingCsv() {
+    try {
+        const includeSummary = document.getElementById('includeSummaryOutgoing').checked;
+        showNotification('Exporting Outgoing CSV...', 'info');
+
+        const result = await window.api.reports.exportCSV({
+            reportType: 'outgoing',
+            includeSummary
+        });
+
+        if (result.success) {
+            showNotification('Outgoing CSV export successful', 'success');
+        } else if (result.canceled) {
+            showNotification('Outgoing CSV export canceled', 'info');
+        } else {
+            showNotification('Failed to export outgoing CSV: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error exporting outgoing CSV:', error);
+        showNotification('Failed to export outgoing CSV', 'error');
     }
 }
 

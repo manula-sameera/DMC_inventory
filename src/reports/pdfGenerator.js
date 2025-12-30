@@ -752,6 +752,322 @@ class PDFGenerator {
             }
         });
     }
+
+    // Helper to write CSV files (UTF-8 with BOM for Excel compatibility)
+    writeCsv(headers, rows, outputPath) {
+        try {
+            const escape = this._escapeCsv.bind(this);
+            const lines = [];
+            lines.push(headers.map(escape).join(','));
+            rows.forEach(row => {
+                lines.push(row.map(cell => escape(cell)).join(','));
+            });
+            const content = '\uFEFF' + lines.join('\r\n');
+            fs.writeFileSync(outputPath, content, 'utf8');
+            return outputPath;
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    _escapeCsv(value) {
+        if (value === null || value === undefined) return '';
+        let s = String(value);
+        if (s.includes('"')) s = s.replace(/"/g, '""');
+        if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+            return `"${s}"`;
+        }
+        return s;
+    }
+
+    // Export Current Stock as CSV. options: { includeSummary: boolean }
+    async exportCurrentStockCSV(data, selectedItems, outputPath, options = { includeSummary: false }) {
+        return new Promise((resolve, reject) => {
+            try {
+                const headers = ['Item Name', 'Category', 'Unit', 'Current Qty', 'Total In', 'Total Out', 'Reorder', 'Status'];
+                const rows = data.map(item => [
+                    this.ensureString(item.Item_Name),
+                    this.ensureString(item.Category || 'N/A'),
+                    this.ensureString(item.Unit_Measure),
+                    item.Current_Quantity || 0,
+                    item.Total_Incoming || 0,
+                    item.Total_Outgoing || 0,
+                    item.Reorder_Level || 0,
+                    (item.Current_Quantity || 0) <= (item.Reorder_Level || 0) ? 'Low' : 'OK'
+                ]);
+
+                this.writeCsv(headers, rows, outputPath);
+
+                if (options && options.includeSummary) {
+                    const lowStockCount = data.filter(item => (item.Current_Quantity || 0) <= (item.Reorder_Level || 0)).length;
+                    const totalQuantity = data.reduce((sum, item) => sum + (item.Current_Quantity || 0), 0);
+                    const summaryRows = [
+                        ['Total Items', data.length],
+                        ['Low Stock Items', lowStockCount],
+                        ['Total Quantity', totalQuantity]
+                    ];
+                    const summaryPath = outputPath.replace(/\.csv$/i, '_summary.csv');
+                    this.writeCsv(['Metric', 'Value'], summaryRows, summaryPath);
+                    resolve({ data: outputPath, summary: summaryPath });
+                } else {
+                    resolve(outputPath);
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    // Export Incoming report as CSV. options: { includeSummary: boolean }
+    async exportIncomingCSV(data, dateRange, selectedItems, outputPath, options = { includeSummary: true }) {
+        return new Promise((resolve, reject) => {
+            try {
+                const headers = ['Bill #', 'Date', 'Item', 'Qty', 'Unit', 'Source', 'Remarks'];
+                const rows = data.map(item => [
+                    this.ensureString(item.Bill_Number || 'N/A'),
+                    new Date(item.Received_Date).toLocaleDateString(),
+                    this.ensureString(item.Item_Name),
+                    item.Quantity,
+                    this.ensureString(item.Unit_Measure),
+                    this.ensureString(item.Source_Name || 'N/A'),
+                    this.ensureString(item.Item_Remarks || item.Bill_Remarks || '')
+                ]);
+
+                this.writeCsv(headers, rows, outputPath);
+
+                if (options && options.includeSummary) {
+                    const itemSummary = {};
+                    data.forEach(item => {
+                        const itemName = this.ensureString(item.Item_Name);
+                        const unit = this.ensureString(item.Unit_Measure || '');
+                        const bill = this.ensureString(item.Bill_Number || '');
+                        if (!itemSummary[itemName]) {
+                            itemSummary[itemName] = { qty: 0, unit: unit, bills: new Set() };
+                        }
+                        itemSummary[itemName].qty += item.Quantity;
+                        if (!itemSummary[itemName].unit && unit) itemSummary[itemName].unit = unit;
+                        if (bill) itemSummary[itemName].bills.add(bill);
+                    });
+
+                    const summaryHeaders = ['Item', 'Unit', 'Total Received', 'Bill Count'];
+                    const summaryRows = Object.entries(itemSummary).map(([itemName, info]) => [
+                        this.ensureString(itemName),
+                        this.ensureString(info.unit || ''),
+                        info.qty,
+                        info.bills.size || 0
+                    ]);
+
+                    const summaryPath = outputPath.replace(/\.csv$/i, '_summary.csv');
+                    this.writeCsv(summaryHeaders, summaryRows, summaryPath);
+                    resolve({ data: outputPath, summary: summaryPath });
+                } else {
+                    resolve(outputPath);
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    // Export Outgoing report as CSV. options: { includeSummary: boolean }
+    async exportOutgoingCSV(data, dateRange, selectedItems, outputPath, options = { includeSummary: true }) {
+        return new Promise((resolve, reject) => {
+            try {
+                const headers = ['Bill #', 'Date', 'Item', 'Qty', 'Unit', 'Center', 'Officer', 'Remarks'];
+                const rows = data.map(item => [
+                    this.ensureString(item.Bill_Number || 'N/A'),
+                    new Date(item.Dispatch_Date).toLocaleDateString(),
+                    this.ensureString(item.Item_Name),
+                    item.Quantity,
+                    this.ensureString(item.Unit_Measure),
+                    this.ensureString(item.Center_Name || 'N/A'),
+                    this.ensureString(item.Officer_Name || 'N/A'),
+                    this.ensureString(item.Item_Remarks || item.Bill_Remarks || '')
+                ]);
+
+                this.writeCsv(headers, rows, outputPath);
+
+                if (options && options.includeSummary) {
+                    const itemSummary = {};
+                    data.forEach(item => {
+                        const itemName = this.ensureString(item.Item_Name);
+                        const unit = this.ensureString(item.Unit_Measure || '');
+                        const bill = this.ensureString(item.Bill_Number || '');
+                        if (!itemSummary[itemName]) {
+                            itemSummary[itemName] = { qty: 0, unit: unit, bills: new Set() };
+                        }
+                        itemSummary[itemName].qty += item.Quantity;
+                        if (!itemSummary[itemName].unit && unit) itemSummary[itemName].unit = unit;
+                        if (bill) itemSummary[itemName].bills.add(bill);
+                    });
+
+                    const summaryHeaders = ['Item', 'Unit', 'Total Dispatched', 'Bill Count'];
+                    const summaryRows = Object.entries(itemSummary).map(([itemName, info]) => [
+                        this.ensureString(itemName),
+                        this.ensureString(info.unit || ''),
+                        info.qty,
+                        info.bills.size || 0
+                    ]);
+
+                    const summaryPath = outputPath.replace(/\.csv$/i, '_summary.csv');
+                    this.writeCsv(summaryHeaders, summaryRows, summaryPath);
+                    resolve({ data: outputPath, summary: summaryPath });
+                } else {
+                    resolve(outputPath);
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    // Export Donations report as CSV. options: { includeSummary: boolean }
+    async exportDonationsCSV(data, dateRange, selectedItems, outputPath, options = { includeSummary: true }) {
+        return new Promise((resolve, reject) => {
+            try {
+                const headers = ['Bill #', 'Date', 'Item', 'Qty', 'Unit', 'Donor', 'Remarks'];
+                const rows = data.map(item => [
+                    this.ensureString(item.Bill_Number || 'N/A'),
+                    new Date(item.Donation_Date).toLocaleDateString(),
+                    this.ensureString(item.Item_Name),
+                    item.Quantity,
+                    this.ensureString(item.Unit_Measure),
+                    this.ensureString(item.Donor_Name || 'Anonymous'),
+                    this.ensureString(item.Item_Remarks || item.Bill_Remarks || '')
+                ]);
+
+                this.writeCsv(headers, rows, outputPath);
+
+                if (options && options.includeSummary) {
+                    const itemSummary = {};
+                    data.forEach(item => {
+                        const itemName = this.ensureString(item.Item_Name);
+                        const unit = this.ensureString(item.Unit_Measure || '');
+                        const bill = this.ensureString(item.Bill_Number || '');
+                        if (!itemSummary[itemName]) {
+                            itemSummary[itemName] = { qty: 0, unit: unit, bills: new Set() };
+                        }
+                        itemSummary[itemName].qty += item.Quantity;
+                        if (!itemSummary[itemName].unit && unit) itemSummary[itemName].unit = unit;
+                        if (bill) itemSummary[itemName].bills.add(bill);
+                    });
+
+                    const summaryHeaders = ['Item', 'Unit', 'Total Donated', 'Bill Count'];
+                    const summaryRows = Object.entries(itemSummary).map(([itemName, info]) => [
+                        this.ensureString(itemName),
+                        this.ensureString(info.unit || ''),
+                        info.qty,
+                        info.bills.size || 0
+                    ]);
+
+                    const summaryPath = outputPath.replace(/\.csv$/i, '_summary.csv');
+                    this.writeCsv(summaryHeaders, summaryRows, summaryPath);
+
+                    // Donor counts as a small table
+                    const donorCount = {};
+                    data.forEach(item => {
+                        const donor = this.ensureString(item.Donor_Name || 'Anonymous');
+                        donorCount[donor] = (donorCount[donor] || 0) + 1;
+                    });
+                    const donorRows = Object.entries(donorCount).map(([donor, count]) => [this.ensureString(donor), count]);
+                    const donorPath = outputPath.replace(/\.csv$/i, '_donors.csv');
+                    this.writeCsv(['Donor', 'Donations Count'], donorRows, donorPath);
+
+                    resolve({ data: outputPath, summary: summaryPath, donors: donorPath });
+                } else {
+                    resolve(outputPath);
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    // Export Care Packages report as CSV. options: { includeSummary: boolean }
+    async exportCarePackagesCSV(data, dateRange, outputPath, options = { includeSummary: true }) {
+        return new Promise((resolve, reject) => {
+            try {
+                const headers = ['Date', 'Package', 'Pkgs Issued', 'Item', 'Total Qty', 'Unit', 'Recipient', 'Officer'];
+                const rows = data.map(item => [
+                    new Date(item.Date_Issued).toLocaleDateString(),
+                    this.ensureString(item.Package_Name),
+                    item.Packages_Issued,
+                    this.ensureString(item.Item_Name),
+                    item.Total_Quantity,
+                    this.ensureString(item.Unit_Measure),
+                    this.ensureString(item.Recipient || 'N/A'),
+                    this.ensureString(item.Officer_Name || 'N/A')
+                ]);
+
+                this.writeCsv(headers, rows, outputPath);
+
+                if (options && options.includeSummary) {
+                    const packageSummary = {};
+                    const itemSummary = {};
+                    data.forEach(item => {
+                        const pkgName = this.ensureString(item.Package_Name);
+                        if (!packageSummary[pkgName]) packageSummary[pkgName] = 0;
+                        packageSummary[pkgName] += item.Packages_Issued;
+
+                        const itemName = this.ensureString(item.Item_Name);
+                        const unit = this.ensureString(item.Unit_Measure || '');
+                        if (!itemSummary[itemName]) itemSummary[itemName] = { qty: 0, unit: unit };
+                        itemSummary[itemName].qty += item.Total_Quantity;
+                    });
+
+                    const pkgRows = Object.entries(packageSummary).map(([pkg, count]) => [this.ensureString(pkg), count]);
+                    const itemRows = Object.entries(itemSummary).map(([itemName, info]) => [this.ensureString(itemName), this.ensureString(info.unit || ''), info.qty]);
+
+                    const summaryPath = outputPath.replace(/\.csv$/i, '_summary.csv');
+                    this.writeCsv(['Package', 'Packages Issued'], pkgRows, summaryPath);
+                    const itemSummaryPath = outputPath.replace(/\.csv$/i, '_items_summary.csv');
+                    this.writeCsv(['Item', 'Unit', 'Total Distributed'], itemRows, itemSummaryPath);
+
+                    resolve({ data: outputPath, summary: summaryPath, items: itemSummaryPath });
+                } else {
+                    resolve(outputPath);
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    // Export Center-Wise Items report as CSV. options: { includeSummary: boolean }
+    async exportCenterWiseItemsCSV(data, centerName, dateRange, outputPath, options = { includeSummary: true }) {
+        return new Promise((resolve, reject) => {
+            try {
+                const headers = ['Item Name', 'Unit', 'Total Quantity Issued', 'Number of Issues'];
+                const rows = data.map(item => [
+                    this.ensureString(item.Item_Name),
+                    this.ensureString(item.Unit_Measure),
+                    item.Total_Quantity || 0,
+                    item.Issue_Count || 0
+                ]);
+
+                this.writeCsv(headers, rows, outputPath);
+
+                if (options && options.includeSummary) {
+                    const totalQuantity = data.reduce((sum, item) => sum + (item.Total_Quantity || 0), 0);
+                    const totalIssues = data.reduce((sum, item) => sum + (item.Issue_Count || 0), 0);
+                    const topItems = [...data].sort((a, b) => (b.Total_Quantity || 0) - (a.Total_Quantity || 0)).slice(0, 5);
+                    const topRows = topItems.map((item, idx) => [idx + 1, this.ensureString(item.Item_Name), item.Total_Quantity, this.ensureString(item.Unit_Measure)]);
+
+                    const summaryPath = outputPath.replace(/\.csv$/i, '_summary.csv');
+                    this.writeCsv(['Metric', 'Value'], [['Center', this.ensureString(centerName)], ['Total Item Types', data.length], ['Total Quantity Issued', totalQuantity], ['Total Number of Issues', totalIssues]], summaryPath);
+
+                    const topPath = outputPath.replace(/\.csv$/i, '_top_items.csv');
+                    this.writeCsv(['Rank', 'Item', 'Total Quantity', 'Unit'], topRows, topPath);
+
+                    resolve({ data: outputPath, summary: summaryPath, top: topPath });
+                } else {
+                    resolve(outputPath);
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
 }
 
 module.exports = new PDFGenerator();
