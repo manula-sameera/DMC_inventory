@@ -857,7 +857,7 @@ function renderOutgoingBillsTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No outgoing bills found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No outgoing bills found</td></tr>';
         return;
     }
 
@@ -871,6 +871,7 @@ function renderOutgoingBillsTable(data) {
                 <td>${escapeHtml(bill.Officer_NIC)}</td>
                 <td><span class="badge">${bill.Item_Count || 0} items</span></td>
                 <td><strong>${bill.Total_Quantity || 0}</strong></td>
+                <td>${escapeHtml(bill.Remarks || '-')}</td>
                 <td class="actions">
                     <button class="btn-icon btn-view" onclick="viewOutgoingBillDetails(${bill.Bill_ID})" title="View">👁️</button>
                     <button class="btn-icon btn-edit" onclick="showEditOutgoingBillModal(${bill.Bill_ID})" title="Edit">✏️</button>
