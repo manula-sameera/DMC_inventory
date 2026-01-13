@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #define MyAppName "DMC Inventory System"
-#define MyAppVersion "1.15.0"
+#define MyAppVersion "1.16.0"
 #define MyAppPublisher "DS Aranayake"
 #define MyAppURL "http://www.aranayaka.ds.gov.lk/"
 #define MyAppExeName "DMC Inventory System.exe"

@@ -1908,10 +1908,7 @@ async function editCarePackageTemplate(templateId) {
             <div class="form-group">
                 <label>Add Item</label>
                 <div style="display:flex; gap:10px;">
-                    <select id="addItemSelect" class="form-control" style="flex:2;">
-                        <option value="">Select an item...</option>
-                        ${allItems.map(item => `<option value="${item.Item_ID}">${escapeHtml(item.Item_Name)} (${escapeHtml(item.Unit_Measure)})</option>`).join('')}
-                    </select>
+                    <div id="addItemContainer" style="flex:2;"></div>
                     <input type="number" id="addItemQty" class="form-control" placeholder="Qty" style="flex:1;" min="0.01" step="0.01">
                     <input type="text" id="addItemRemarks" class="form-control" placeholder="Remarks" style="flex:2;">
                     <button type="button" class="btn btn-secondary" onclick="addTemplateItemRow(${templateId})">➕ Add</button>
@@ -1934,6 +1931,14 @@ async function editCarePackageTemplate(templateId) {
     `;
 
     showModal('Edit Care Package Template', modalBody, true);
+
+    // Initialize searchable select for items
+    const itemOptions = allItems.map(i => ({ 
+        value: i.Item_ID.toString(), 
+        text: `${escapeHtml(i.Item_Name)} (${escapeHtml(i.Unit_Measure)})` 
+    }));
+    const itemSelect = new SearchableSelect('addItemContainer', itemOptions, 'Search items...');
+    window.currentItemSelect = itemSelect;
 
     document.getElementById('editTemplateForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1970,11 +1975,11 @@ async function editCarePackageTemplate(templateId) {
 }
 
 async function addTemplateItemRow(templateId) {
-    const itemSelect = document.getElementById('addItemSelect');
+    const itemSelect = window.currentItemSelect;
     const qtyInput = document.getElementById('addItemQty');
     const remarksInput = document.getElementById('addItemRemarks');
     
-    const itemId = parseInt(itemSelect.value);
+    const itemId = parseInt(itemSelect.getValue());
     const qty = parseFloat(qtyInput.value);
     const remarks = remarksInput.value || '';
     
@@ -1983,8 +1988,8 @@ async function addTemplateItemRow(templateId) {
         return;
     }
     
-    if (!qty || isNaN(qty) || qty < 1) {
-        showNotification('Please enter a valid quantity', 'error');
+    if (!qty || isNaN(qty) || qty < 0.01) {
+        showNotification('Please enter a valid quantity (minimum 0.01)', 'error');
         return;
     }
     
