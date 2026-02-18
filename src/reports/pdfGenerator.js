@@ -111,6 +111,13 @@ class PDFGenerator {
         return String(value);
     }
 
+    formatNumber(value) {
+        if (typeof value === 'number' && !isNaN(value)) {
+            return parseFloat(value).toFixed(2);
+        }
+        return value;
+    }
+
     addFooter(doc, pageNumber, totalPages) {
         const bottom = this.pageHeight - this.margin;
         
@@ -216,7 +223,9 @@ class PDFGenerator {
             const font = this.getFont(isHeader);
             
             // Ensure proper Unicode string handling
-            const cellText = this.ensureString(cells[i]);
+            // Format numbers to 2 decimal places
+            const isNumeric = typeof cells[i] === 'number';
+            const cellText = isNumeric ? this.formatNumber(cells[i]) : this.ensureString(cells[i]);
             
             doc.fillColor('#000000')
                .fontSize(fontSize)
@@ -227,7 +236,7 @@ class PDFGenerator {
                    y + (isHeader ? 8 : 5),
                    {
                        width: columnWidths[i] - 10,
-                       align: i === 0 ? 'left' : (typeof cells[i] === 'number' ? 'right' : 'left'),
+                       align: i === 0 ? 'left' : (isNumeric ? 'right' : 'left'),
                        ellipsis: true
                    }
                );
@@ -289,7 +298,7 @@ class PDFGenerator {
                 ).length;
                 doc.text(`Low Stock Items: ${lowStockCount}`);
                 const totalQuantity = data.reduce((sum, item) => sum + (item.Current_Quantity || 0), 0);
-                doc.text(`Total Quantity: ${totalQuantity}`);
+                doc.text(`Total Quantity: ${this.formatNumber(totalQuantity)}`);
                 
                 // Add page numbers
                 const range = doc.bufferedPageRange();
@@ -627,43 +636,183 @@ class PDFGenerator {
                 // Draw table
                 this.drawTable(doc, headers, rows, columnWidths);
                 
-                // Add summary
-                doc.moveDown(2);
-                doc.fontSize(10).font(this.getFont(true)).text('Summary:', { underline: true });
-                doc.fontSize(9).font(this.getFont(false));
-                doc.text(`Total Issues: ${data.length}`);
+                // ===== SUMMARY PAGE (new page) =====
+                doc.addPage();
+                doc.fontSize(16).font(this.getFont(true)).text('Summary', { align: 'center' });
+                doc.moveDown();
+                doc.strokeColor('#cccccc').lineWidth(1)
+                   .moveTo(this.margin, doc.y).lineTo(this.pageWidth - this.margin, doc.y).stroke();
+                doc.moveDown();
                 
-                // Group by package type
+                doc.fontSize(10).font(this.getFont(false));
+                doc.text(`Total Issues: ${data.length}`);
+                doc.moveDown();
+                
+                // Group by package type (deduplicate per issue)
                 const packageSummary = {};
+                const issueKeys = new Set();
                 data.forEach(item => {
                     const pkgName = this.ensureString(item.Package_Name);
+                    const issueKey = `${item.Date_Issued}|${pkgName}|${this.ensureString(item.Recipient)}|${this.ensureString(item.Officer_Name)}`;
                     if (!packageSummary[pkgName]) {
-                        packageSummary[pkgName] = 0;
+                        packageSummary[pkgName] = { totalPackages: 0, keys: new Set() };
                     }
-                    packageSummary[pkgName] += item.Packages_Issued;
+                    if (!packageSummary[pkgName].keys.has(issueKey)) {
+                        packageSummary[pkgName].keys.add(issueKey);
+                        packageSummary[pkgName].totalPackages += item.Packages_Issued;
+                    }
+                    issueKeys.add(issueKey);
                 });
                 
-                doc.moveDown();
-                doc.text('Total Packages Issued by Type:');
-                Object.entries(packageSummary).forEach(([pkgName, count]) => {
-                    doc.text(`  ${this.ensureString(pkgName)}: ${count} packages`);
-                });
+                // Packages issued by type table
+                doc.fontSize(11).font(this.getFont(true)).text('Total Packages Issued by Type:', { underline: true });
+                doc.moveDown(0.5);
+                const pkgSummaryHeaders = ['Package Name', 'Total Packages Issued'];
+                const pkgSummaryRows = Object.entries(packageSummary).map(([pkgName, info]) => [
+                    this.ensureString(pkgName),
+                    info.totalPackages
+                ]);
+                this.drawTable(doc, pkgSummaryHeaders, pkgSummaryRows, [300, 215]);
+                
+                doc.moveDown(2);
                 
                 // Group by item
                 const itemSummary = {};
                 data.forEach(item => {
                     const itemName = this.ensureString(item.Item_Name);
+                    const unit = this.ensureString(item.Unit_Measure || '');
                     if (!itemSummary[itemName]) {
-                        itemSummary[itemName] = 0;
+                        itemSummary[itemName] = { qty: 0, unit: unit };
                     }
-                    itemSummary[itemName] += item.Total_Quantity;
+                    itemSummary[itemName].qty += item.Total_Quantity;
                 });
                 
+                // Items distributed table
+                doc.fontSize(11).font(this.getFont(true)).text('Total Items Distributed:', { underline: true });
+                doc.moveDown(0.5);
+                const itemSummaryHeaders = ['Item Name', 'Unit', 'Total Quantity'];
+                const itemSummaryRows = Object.entries(itemSummary).map(([itemName, info]) => [
+                    this.ensureString(itemName),
+                    this.ensureString(info.unit),
+                    info.qty
+                ]);
+                this.drawTable(doc, itemSummaryHeaders, itemSummaryRows, [250, 100, 165]);
+                
+                // ===== ISSUE COUNT BY GN DIVISION & CENTERS (new page) =====
+                doc.addPage();
+                doc.fontSize(16).font(this.getFont(true)).text('Care Package Issue Count', { align: 'center' });
                 doc.moveDown();
-                doc.text('Total Items Distributed:');
-                Object.entries(itemSummary).forEach(([itemName, qty]) => {
-                    doc.text(`  ${this.ensureString(itemName)}: ${qty}`);
+                doc.strokeColor('#cccccc').lineWidth(1)
+                   .moveTo(this.margin, doc.y).lineTo(this.pageWidth - this.margin, doc.y).stroke();
+                doc.moveDown();
+                
+                // Deduplicate issues (since query returns one row per item per issue)
+                const uniqueIssues = {};
+                data.forEach(item => {
+                    const issueKey = `${item.Date_Issued}|${this.ensureString(item.Package_Name)}|${this.ensureString(item.Recipient)}|${this.ensureString(item.Officer_Name)}`;
+                    if (!uniqueIssues[issueKey]) {
+                        uniqueIssues[issueKey] = {
+                            Recipient_Type: item.Recipient_Type,
+                            Recipient: this.ensureString(item.Recipient || 'N/A'),
+                            Package_Name: this.ensureString(item.Package_Name),
+                            Packages_Issued: item.Packages_Issued
+                        };
+                    }
                 });
+                
+                // Helper to build grouped breakdown: { recipientName: { packageType: count } }
+                const buildBreakdownTable = (recipientType) => {
+                    const summary = {};
+                    Object.values(uniqueIssues).forEach(issue => {
+                        if (issue.Recipient_Type === recipientType) {
+                            if (!summary[issue.Recipient]) {
+                                summary[issue.Recipient] = {};
+                            }
+                            if (!summary[issue.Recipient][issue.Package_Name]) {
+                                summary[issue.Recipient][issue.Package_Name] = 0;
+                            }
+                            summary[issue.Recipient][issue.Package_Name] += issue.Packages_Issued;
+                        }
+                    });
+                    return summary;
+                };
+                
+                // Helper to draw stepped/grouped layout for a recipient type
+                const drawSteppedLayout = (doc, summary, title, emptyMessage) => {
+                    doc.fontSize(12).font(this.getFont(true)).text(title, { underline: true });
+                    doc.moveDown(0.5);
+                    
+                    const entries = Object.entries(summary).sort((a, b) => a[0].localeCompare(b[0]));
+                    
+                    if (entries.length === 0) {
+                        doc.fontSize(9).font(this.getFont(false)).text(emptyMessage);
+                        return;
+                    }
+                    
+                    entries.forEach(([name, packages]) => {
+                        // Check if we need a new page for this group
+                        if (doc.y > this.pageHeight - 150) {
+                            doc.addPage();
+                        }
+                        
+                        // Group header - the GN Division / Center name
+                        doc.fontSize(10).font(this.getFont(true))
+                           .fillColor('#333333')
+                           .text(this.ensureString(name));
+                        doc.fillColor('#000000');
+                        doc.moveDown(0.3);
+                        
+                        // Package breakdown table for this group
+                        const pkgHeaders = ['Package Type', 'Packages Issued'];
+                        const pkgRows = Object.entries(packages)
+                            .sort((a, b) => a[0].localeCompare(b[0]))
+                            .map(([pkgName, count]) => [
+                                this.ensureString(pkgName),
+                                count
+                            ]);
+                        
+                        // Add total row
+                        const total = Object.values(packages).reduce((sum, qty) => sum + qty, 0);
+                        pkgRows.push(['Total', total]);
+                        
+                        // Draw indented table (offset from left margin)
+                        const savedMargin = this.margin;
+                        this.margin = savedMargin + 20;
+                        this.contentWidth = this.pageWidth - (this.margin * 2) + 20;
+                        
+                        this.drawTable(doc, pkgHeaders, pkgRows, [this.contentWidth - 120, 120]);
+                        
+                        // Restore margins
+                        this.margin = savedMargin;
+                        this.contentWidth = this.pageWidth - (this.margin * 2);
+                        
+                        doc.moveDown(1);
+                    });
+                };
+                
+                // --- GN Division Stepped Layout ---
+                const gnSummary = buildBreakdownTable('GN Division');
+                drawSteppedLayout(
+                    doc, gnSummary,
+                    'Packages Issued by GN Division:',
+                    'No care packages issued to GN Divisions in this period.'
+                );
+                
+                doc.moveDown(1);
+                
+                // --- Center Stepped Layout ---
+                const centerSummary = buildBreakdownTable('Center');
+                
+                // Start centers on a new page if not enough space
+                if (doc.y > this.pageHeight - 200) {
+                    doc.addPage();
+                }
+                
+                drawSteppedLayout(
+                    doc, centerSummary,
+                    'Packages Issued by Center:',
+                    'No care packages issued to Centers in this period.'
+                );
                 
                 // Add page numbers
                 const range = doc.bufferedPageRange();
@@ -718,7 +867,7 @@ class PDFGenerator {
                 doc.text(`Center: ${this.ensureString(centerName)}`);
                 doc.text(`Total Item Types: ${data.length}`);
                 const totalQuantity = data.reduce((sum, item) => sum + (item.Total_Quantity || 0), 0);
-                doc.text(`Total Quantity Issued: ${totalQuantity}`);
+                doc.text(`Total Quantity Issued: ${this.formatNumber(totalQuantity)}`);
                 const totalIssues = data.reduce((sum, item) => sum + (item.Issue_Count || 0), 0);
                 doc.text(`Total Number of Issues: ${totalIssues}`);
                 
@@ -733,8 +882,79 @@ class PDFGenerator {
                         .slice(0, 5);
                     
                     topItems.forEach((item, index) => {
-                        doc.text(`  ${index + 1}. ${this.ensureString(item.Item_Name)}: ${item.Total_Quantity} ${this.ensureString(item.Unit_Measure)}`);
+                        doc.text(`  ${index + 1}. ${this.ensureString(item.Item_Name)}: ${this.formatNumber(item.Total_Quantity)} ${this.ensureString(item.Unit_Measure)}`);
                     });
+                }
+                
+                // Add page numbers
+                const range = doc.bufferedPageRange();
+                for (let i = 0; i < range.count; i++) {
+                    doc.switchToPage(i);
+                    this.addFooter(doc, i + 1, range.count);
+                }
+                
+                doc.end();
+                stream.on('finish', () => resolve(outputPath));
+                stream.on('error', reject);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    // Generate Care Package Template Details PDF
+    async generateCarePackageTemplatePDF(template, items, outputPath) {
+        return new Promise((resolve, reject) => {
+            try {
+                const doc = this.createDocument();
+                const stream = fs.createWriteStream(outputPath);
+                
+                doc.pipe(stream);
+                
+                // Add header
+                this.addHeader(doc, 'Care Package Template Details', this.ensureString(template.Package_Name));
+                
+                // Template metadata
+                doc.fontSize(10).font(this.getFont(true)).text('Template Information:', { underline: true });
+                doc.moveDown(0.5);
+                doc.fontSize(9).font(this.getFont(false));
+                doc.text(`Package Name: ${this.ensureString(template.Package_Name)}`);
+                doc.text(`Description: ${this.ensureString(template.Description || '-')}`);
+                doc.text(`Status: ${this.ensureString(template.Status)}`);
+                if (template.Created_At) {
+                    doc.text(`Created: ${new Date(template.Created_At).toLocaleDateString()}`);
+                }
+                
+                doc.moveDown(1.5);
+                
+                // Items table
+                doc.fontSize(10).font(this.getFont(true)).text('Items in Package:', { underline: true });
+                doc.moveDown(0.5);
+                
+                if (items.length === 0) {
+                    doc.fontSize(9).font(this.getFont(false)).text('No items in this package.');
+                } else {
+                    const headers = ['#', 'Item Name', 'Category', 'Quantity Per Package', 'Unit', 'Remarks'];
+                    const columnWidths = [30, 150, 80, 90, 60, 105];
+                    
+                    const rows = items.map((item, index) => [
+                        index + 1,
+                        this.ensureString(item.Item_Name),
+                        this.ensureString(item.Category || '-'),
+                        item.Quantity_Per_Package,
+                        this.ensureString(item.Unit_Measure),
+                        this.ensureString(item.Item_Remarks || '-')
+                    ]);
+                    
+                    this.drawTable(doc, headers, rows, columnWidths);
+                    
+                    // Summary
+                    doc.moveDown(1.5);
+                    doc.fontSize(10).font(this.getFont(true)).text('Summary:', { underline: true });
+                    doc.fontSize(9).font(this.getFont(false));
+                    doc.text(`Total Items in Package: ${items.length}`);
+                    const totalQty = items.reduce((sum, item) => sum + (item.Quantity_Per_Package || 0), 0);
+                    doc.text(`Total Quantity Per Package: ${this.formatNumber(totalQty)}`);
                 }
                 
                 // Add page numbers
@@ -789,10 +1009,10 @@ class PDFGenerator {
                     this.ensureString(item.Item_Name),
                     this.ensureString(item.Category || 'N/A'),
                     this.ensureString(item.Unit_Measure),
-                    item.Current_Quantity || 0,
-                    item.Total_Incoming || 0,
-                    item.Total_Outgoing || 0,
-                    item.Reorder_Level || 0,
+                    this.formatNumber(item.Current_Quantity || 0),
+                    this.formatNumber(item.Total_Incoming || 0),
+                    this.formatNumber(item.Total_Outgoing || 0),
+                    this.formatNumber(item.Reorder_Level || 0),
                     (item.Current_Quantity || 0) <= (item.Reorder_Level || 0) ? 'Low' : 'OK'
                 ]);
 
@@ -804,7 +1024,7 @@ class PDFGenerator {
                     const summaryRows = [
                         ['Total Items', data.length],
                         ['Low Stock Items', lowStockCount],
-                        ['Total Quantity', totalQuantity]
+                        ['Total Quantity', this.formatNumber(totalQuantity)]
                     ];
                     const summaryPath = outputPath.replace(/\.csv$/i, '_summary.csv');
                     this.writeCsv(['Metric', 'Value'], summaryRows, summaryPath);
@@ -827,7 +1047,7 @@ class PDFGenerator {
                     this.ensureString(item.Bill_Number || 'N/A'),
                     new Date(item.Received_Date).toLocaleDateString(),
                     this.ensureString(item.Item_Name),
-                    item.Quantity,
+                    this.formatNumber(item.Quantity),
                     this.ensureString(item.Unit_Measure),
                     this.ensureString(item.Source_Name || 'N/A'),
                     this.ensureString(item.Item_Remarks || item.Bill_Remarks || '')
@@ -853,7 +1073,7 @@ class PDFGenerator {
                     const summaryRows = Object.entries(itemSummary).map(([itemName, info]) => [
                         this.ensureString(itemName),
                         this.ensureString(info.unit || ''),
-                        info.qty,
+                        this.formatNumber(info.qty),
                         info.bills.size || 0
                     ]);
 
@@ -878,7 +1098,7 @@ class PDFGenerator {
                     this.ensureString(item.Bill_Number || 'N/A'),
                     new Date(item.Dispatch_Date).toLocaleDateString(),
                     this.ensureString(item.Item_Name),
-                    item.Quantity,
+                    this.formatNumber(item.Quantity),
                     this.ensureString(item.Unit_Measure),
                     this.ensureString(item.Center_Name || 'N/A'),
                     this.ensureString(item.Officer_Name || 'N/A'),
@@ -905,7 +1125,7 @@ class PDFGenerator {
                     const summaryRows = Object.entries(itemSummary).map(([itemName, info]) => [
                         this.ensureString(itemName),
                         this.ensureString(info.unit || ''),
-                        info.qty,
+                        this.formatNumber(info.qty),
                         info.bills.size || 0
                     ]);
 
@@ -930,7 +1150,7 @@ class PDFGenerator {
                     this.ensureString(item.Bill_Number || 'N/A'),
                     new Date(item.Donation_Date).toLocaleDateString(),
                     this.ensureString(item.Item_Name),
-                    item.Quantity,
+                    this.formatNumber(item.Quantity),
                     this.ensureString(item.Unit_Measure),
                     this.ensureString(item.Donor_Name || 'Anonymous'),
                     this.ensureString(item.Item_Remarks || item.Bill_Remarks || '')
@@ -956,7 +1176,7 @@ class PDFGenerator {
                     const summaryRows = Object.entries(itemSummary).map(([itemName, info]) => [
                         this.ensureString(itemName),
                         this.ensureString(info.unit || ''),
-                        info.qty,
+                        this.formatNumber(info.qty),
                         info.bills.size || 0
                     ]);
 
@@ -991,9 +1211,9 @@ class PDFGenerator {
                 const rows = data.map(item => [
                     new Date(item.Date_Issued).toLocaleDateString(),
                     this.ensureString(item.Package_Name),
-                    item.Packages_Issued,
+                    this.formatNumber(item.Packages_Issued),
                     this.ensureString(item.Item_Name),
-                    item.Total_Quantity,
+                    this.formatNumber(item.Total_Quantity),
                     this.ensureString(item.Unit_Measure),
                     this.ensureString(item.Recipient || 'N/A'),
                     this.ensureString(item.Officer_Name || 'N/A')
@@ -1015,8 +1235,8 @@ class PDFGenerator {
                         itemSummary[itemName].qty += item.Total_Quantity;
                     });
 
-                    const pkgRows = Object.entries(packageSummary).map(([pkg, count]) => [this.ensureString(pkg), count]);
-                    const itemRows = Object.entries(itemSummary).map(([itemName, info]) => [this.ensureString(itemName), this.ensureString(info.unit || ''), info.qty]);
+                    const pkgRows = Object.entries(packageSummary).map(([pkg, count]) => [this.ensureString(pkg), this.formatNumber(count)]);
+                    const itemRows = Object.entries(itemSummary).map(([itemName, info]) => [this.ensureString(itemName), this.ensureString(info.unit || ''), this.formatNumber(info.qty)]);
 
                     const summaryPath = outputPath.replace(/\.csv$/i, '_summary.csv');
                     this.writeCsv(['Package', 'Packages Issued'], pkgRows, summaryPath);
@@ -1041,7 +1261,7 @@ class PDFGenerator {
                 const rows = data.map(item => [
                     this.ensureString(item.Item_Name),
                     this.ensureString(item.Unit_Measure),
-                    item.Total_Quantity || 0,
+                    this.formatNumber(item.Total_Quantity || 0),
                     item.Issue_Count || 0
                 ]);
 
@@ -1051,10 +1271,10 @@ class PDFGenerator {
                     const totalQuantity = data.reduce((sum, item) => sum + (item.Total_Quantity || 0), 0);
                     const totalIssues = data.reduce((sum, item) => sum + (item.Issue_Count || 0), 0);
                     const topItems = [...data].sort((a, b) => (b.Total_Quantity || 0) - (a.Total_Quantity || 0)).slice(0, 5);
-                    const topRows = topItems.map((item, idx) => [idx + 1, this.ensureString(item.Item_Name), item.Total_Quantity, this.ensureString(item.Unit_Measure)]);
+                    const topRows = topItems.map((item, idx) => [idx + 1, this.ensureString(item.Item_Name), this.formatNumber(item.Total_Quantity), this.ensureString(item.Unit_Measure)]);
 
                     const summaryPath = outputPath.replace(/\.csv$/i, '_summary.csv');
-                    this.writeCsv(['Metric', 'Value'], [['Center', this.ensureString(centerName)], ['Total Item Types', data.length], ['Total Quantity Issued', totalQuantity], ['Total Number of Issues', totalIssues]], summaryPath);
+                    this.writeCsv(['Metric', 'Value'], [['Center', this.ensureString(centerName)], ['Total Item Types', data.length], ['Total Quantity Issued', this.formatNumber(totalQuantity)], ['Total Number of Issues', totalIssues]], summaryPath);
 
                     const topPath = outputPath.replace(/\.csv$/i, '_top_items.csv');
                     this.writeCsv(['Rank', 'Item', 'Total Quantity', 'Unit'], topRows, topPath);

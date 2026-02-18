@@ -156,6 +156,41 @@ ipcMain.handle('carePackages:addIssue', (event, issue) => db.addCarePackageIssue
 ipcMain.handle('carePackages:updateIssue', (event, issueId, issue) => db.updateCarePackageIssue(issueId, issue));
 ipcMain.handle('carePackages:deleteIssue', (event, issueId) => db.deleteCarePackageIssue(issueId));
 
+// IPC Handler for Care Package Template PDF Export
+ipcMain.handle('carePackages:exportTemplatePDF', async (event, templateId) => {
+    try {
+        const template = db.getCarePackageTemplate(templateId);
+        if (!template) {
+            return { success: false, error: 'Template not found' };
+        }
+        const items = db.getCarePackageTemplateItems(templateId);
+        
+        const downloadsPath = app.getPath('downloads');
+        const safeName = template.Package_Name.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+        const defaultFileName = `Care_Package_Template_${safeName}_${timestamp}.pdf`;
+        
+        const result = await dialog.showSaveDialog(mainWindow, {
+            title: 'Save Care Package Template PDF',
+            defaultPath: path.join(downloadsPath, defaultFileName),
+            filters: [
+                { name: 'PDF Files', extensions: ['pdf'] },
+                { name: 'All Files', extensions: ['*'] }
+            ]
+        });
+        
+        if (result.canceled || !result.filePath) {
+            return { success: false, canceled: true };
+        }
+        
+        const reportPath = await pdfGenerator.generateCarePackageTemplatePDF(template, items, result.filePath);
+        return { success: true, path: reportPath };
+    } catch (error) {
+        console.error('Error exporting care package template PDF:', error);
+        return { success: false, error: error.message };
+    }
+});
+
 // IPC Handlers for Current Stock
 ipcMain.handle('stock:getCurrent', () => db.getCurrentStock());
 ipcMain.handle('stock:getLowStock', () => db.getLowStock());

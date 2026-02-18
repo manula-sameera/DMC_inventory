@@ -1866,12 +1866,28 @@ async function viewCarePackageTemplate(templateId) {
             <h4>Items in Package:</h4>
             ${itemsHtml}
             <div class="form-actions">
+                <button type="button" class="btn btn-primary" onclick="exportCarePackageTemplatePDF(${template.Template_ID})">Export PDF</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
             </div>
         </div>
     `;
 
     showModal('Care Package Template Details', modalBody);
+}
+
+async function exportCarePackageTemplatePDF(templateId) {
+    try {
+        showNotification('Generating Care Package Template PDF...', 'info');
+        const result = await window.api.carePackages.exportTemplatePDF(templateId);
+        if (result.success) {
+            showNotification('Template PDF generated successfully! File saved to: ' + result.path, 'success');
+        } else if (!result.canceled) {
+            showNotification('Failed to generate template PDF: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error exporting care package template PDF:', error);
+        showNotification('Failed to generate template PDF', 'error');
+    }
 }
 
 async function editCarePackageTemplate(templateId) {

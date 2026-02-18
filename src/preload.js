@@ -92,7 +92,10 @@ contextBridge.exposeInMainWorld('api', {
         getIssue: (issueId) => ipcRenderer.invoke('carePackages:getIssue', issueId),
         addIssue: (issue) => ipcRenderer.invoke('carePackages:addIssue', issue),
         updateIssue: (issueId, issue) => ipcRenderer.invoke('carePackages:updateIssue', issueId, issue),
-        deleteIssue: (issueId) => ipcRenderer.invoke('carePackages:deleteIssue', issueId)
+        deleteIssue: (issueId) => ipcRenderer.invoke('carePackages:deleteIssue', issueId),
+        
+        // Template PDF Export
+        exportTemplatePDF: (templateId) => ipcRenderer.invoke('carePackages:exportTemplatePDF', templateId)
     },
     
     // Current Stock API

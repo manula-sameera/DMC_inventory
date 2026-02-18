@@ -37,6 +37,23 @@ npm run build
 # Build Windows installer
 npm run build:win
 ```
+## Using the npm-check-updates utility
+
+### Install the npm-check-updates package globally by running:
+```bash
+npm install -g npm-check-updates
+```
+### Check for outdated packages (optional, but recommended) by running ncu. This will list available updates without changing anything.
+
+### Update the versions in your package.json file to the latest available versions by running:
+```bash
+ncu -u
+```
+The -u flag stands for "upgrade".
+### Install the newly specified versions in your project by running:
+```bash
+npm install
+```
 
 ## Database Structure
 
