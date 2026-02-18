@@ -45,6 +45,17 @@ async function preloadCommonData() {
         console.error('Error preloading data:', error);
         // Don't show notification, this is background loading
     }
+
+    // Load app version for About section (safe fallback to existing content)
+    try {
+        const verEl = document.getElementById('app-version');
+        if (verEl && window.api && window.api.app && window.api.app.getVersion) {
+            const ver = await window.api.app.getVersion();
+            if (ver) verEl.textContent = ver;
+        }
+    } catch (err) {
+        console.error('Failed to load app version:', err);
+    }
 }
 
 // Navigation

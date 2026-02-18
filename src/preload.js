@@ -117,6 +117,11 @@ contextBridge.exposeInMainWorld('api', {
         exportCSV: (options) => ipcRenderer.invoke('reports:exportCSV', options)
     },
 
+    // App API
+    app: {
+        getVersion: () => ipcRenderer.invoke('app:getVersion')
+    },
+
     // App events from main
     appEvents: {
         onOpenReports: (callback) => ipcRenderer.on('app:openReports', callback)

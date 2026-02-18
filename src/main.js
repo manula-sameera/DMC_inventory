@@ -85,6 +85,9 @@ app.on('window-all-closed', () => {
     }
 });
 
+// Expose app version to renderer
+ipcMain.handle('app:getVersion', () => app.getVersion());
+
 // IPC Handlers for Items
 ipcMain.handle('items:getAll', () => db.getAllItems());
 ipcMain.handle('items:getActive', () => db.getActiveItems());
