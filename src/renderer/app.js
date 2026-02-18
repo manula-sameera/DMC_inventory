@@ -1725,7 +1725,7 @@ function renderCarePackageIssuesTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No care package issues found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center">No care package issues found</td></tr>';
         return;
     }
 
@@ -1741,6 +1741,7 @@ function renderCarePackageIssuesTable(data) {
                 <td>${escapeHtml(recipient)}</td>
                 <td>${escapeHtml(issue.Officer_Name)}</td>
                 <td>${escapeHtml(issue.Officer_NIC)}</td>
+                <td>${escapeHtml(issue.Remarks || '-')}</td>
                 <td>
                     <button class="btn btn-small btn-secondary" onclick="viewCarePackageIssue(${issue.Issue_ID})">View</button>
                     <button class="btn btn-small btn-secondary" onclick="editCarePackageIssue(${issue.Issue_ID})">Edit</button>
