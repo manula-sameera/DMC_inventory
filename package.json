@@ -19,21 +19,20 @@
   "author": "Manula Sameera",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^40.4.1",
-    "electron-builder": "^26.7.0",
-    "png-to-ico": "^3.0.1",
-    "sharp": "^0.34.5",
+    "electron": "^42.6.1",
+    "electron-builder": "^26.15.3",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.3",
     "to-ico": "^1.1.5"
   },
   "dependencies": {
-    "better-sqlite3": "^12.6.2",
+    "better-sqlite3": "^12.11.1",
     "fontkit": "^2.0.4",
-    "form-data": "^4.0.5",
+    "form-data": "^4.0.6",
     "jpeg-js": "^0.4.4",
     "minimist": "^1.2.8",
-    "pdfkit": "^0.17.2",
-    "tough-cookie": "^6.0.0",
-    "url-regex": "^5.0.0"
+    "pdfkit": "^0.19.1",
+    "tough-cookie": "^6.0.2"
   },
   "build": {
     "appId": "com.dmc.inventory",
