@@ -7,7 +7,7 @@ async function loadIncomingStock() {
     try {
         const bills = await window.api.incoming.bills.getAll();
         currentData.incomingBills = bills;
-        renderIncomingBillsTable(bills);
+        renderPaginatedTable('incoming-bills', bills, renderIncomingBillsTable, true);
     } catch (error) {
         console.error('Error loading incoming bills:', error);
         showNotification('Failed to load incoming bills', 'error');
@@ -462,7 +462,7 @@ async function loadDonations() {
     try {
         const bills = await window.api.donations.bills.getAll();
         currentData.donationBills = bills;
-        renderDonationBillsTable(bills);
+        renderPaginatedTable('donation-bills', bills, renderDonationBillsTable, true);
     } catch (error) {
         console.error('Error loading donation bills:', error);
         showNotification('Failed to load donation bills', 'error');
@@ -879,7 +879,7 @@ async function loadOutgoingStock() {
     try {
         const bills = await window.api.outgoing.bills.getAll();
         currentData.outgoingBills = bills;
-        renderOutgoingBillsTable(bills);
+        renderPaginatedTable('outgoing-bills', bills, renderOutgoingBillsTable, true);
     } catch (error) {
         console.error('Error loading outgoing bills:', error);
         showNotification('Failed to load outgoing bills', 'error');

@@ -14,6 +14,90 @@ function statusBadge(label, cls) {
     return `<span class="status-badge ${cls}"><span class="dot"></span>${escapeHtml(label)}</span>`;
 }
 
+// ==================== Pagination ====================
+// Shared client-side pagination for data tables. Wraps an existing render*Table(rows)
+// function: slices the full dataset to the current page and re-renders the pagination
+// bar. Does NOT touch export/report code — those always query the full dataset fresh
+// via IPC, independent of whatever page is on screen.
+const PAGE_SIZE_DEFAULT = 15;
+const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100];
+const paginationState = {};
+
+function getPaginationState(tableKey) {
+    if (!paginationState[tableKey]) {
+        paginationState[tableKey] = { page: 1, pageSize: PAGE_SIZE_DEFAULT };
+    }
+    return paginationState[tableKey];
+}
+
+// Slice fullData to the current page, render the rows via renderRowsFn, and draw controls.
+// Pass resetPage=true whenever fullData is a fresh load or a new search/filter result.
+function renderPaginatedTable(tableKey, fullData, renderRowsFn, resetPage) {
+    const state = getPaginationState(tableKey);
+    if (resetPage) state.page = 1;
+
+    const totalItems = fullData.length;
+    const totalPages = Math.max(Math.ceil(totalItems / state.pageSize), 1);
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
+
+    const startIdx = (state.page - 1) * state.pageSize;
+    const pageData = fullData.slice(startIdx, startIdx + state.pageSize);
+    renderRowsFn(pageData);
+
+    renderPaginationControls(tableKey, totalItems, () => renderPaginatedTable(tableKey, fullData, renderRowsFn, false));
+}
+
+function renderPaginationControls(tableKey, totalItems, onChange) {
+    const el = document.getElementById(`${tableKey}-pagination`);
+    if (!el) return;
+
+    if (totalItems === 0) {
+        el.innerHTML = '';
+        return;
+    }
+
+    const state = getPaginationState(tableKey);
+    const totalPages = Math.max(Math.ceil(totalItems / state.pageSize), 1);
+    const start = (state.page - 1) * state.pageSize + 1;
+    const end = Math.min(state.page * state.pageSize, totalItems);
+
+    el.innerHTML = `
+        <div class="pagination-info">Showing <b>${start}–${end}</b> of <b>${totalItems}</b></div>
+        <div class="pagination-controls">
+            <select class="pagination-size" title="Rows per page">
+                ${PAGE_SIZE_OPTIONS.map(n => `<option value="${n}" ${n === state.pageSize ? 'selected' : ''}>${n} / page</option>`).join('')}
+            </select>
+            <button type="button" class="pagination-btn" data-action="first" ${state.page === 1 ? 'disabled' : ''} title="First page">&laquo;</button>
+            <button type="button" class="pagination-btn" data-action="prev" ${state.page === 1 ? 'disabled' : ''} title="Previous page">&lsaquo;</button>
+            <span class="pagination-page">${state.page} / ${totalPages}</span>
+            <button type="button" class="pagination-btn" data-action="next" ${state.page === totalPages ? 'disabled' : ''} title="Next page">&rsaquo;</button>
+            <button type="button" class="pagination-btn" data-action="last" ${state.page === totalPages ? 'disabled' : ''} title="Last page">&raquo;</button>
+        </div>
+    `;
+
+    el.querySelectorAll('.pagination-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            const action = btn.dataset.action;
+            if (action === 'first') state.page = 1;
+            else if (action === 'prev') state.page = Math.max(1, state.page - 1);
+            else if (action === 'next') state.page = Math.min(totalPages, state.page + 1);
+            else if (action === 'last') state.page = totalPages;
+            onChange();
+        });
+    });
+
+    const sizeSelect = el.querySelector('.pagination-size');
+    if (sizeSelect) {
+        sizeSelect.addEventListener('change', () => {
+            state.pageSize = parseInt(sizeSelect.value, 10) || PAGE_SIZE_DEFAULT;
+            state.page = 1;
+            onChange();
+        });
+    }
+}
+
 // Application State
 let currentData = {
     items: [],
@@ -159,14 +243,14 @@ function applyGlobalSearch(page, term) {
         case 'current-stock': {
             const filtered = currentData.currentStock.filter(item =>
                 item.Item_Name.toLowerCase().includes(term) || item.Category.toLowerCase().includes(term));
-            renderCurrentStockTable(filtered);
+            renderPaginatedTable('current-stock', filtered, renderCurrentStockTable, true);
             break;
         }
         case 'items': {
             const filtered = currentData.items.filter(i =>
                 String(i.Item_ID).includes(term) || i.Item_Name.toLowerCase().includes(term) ||
                 i.Category.toLowerCase().includes(term) || i.Unit_Measure.toLowerCase().includes(term));
-            renderItemsTable(filtered);
+            renderPaginatedTable('items', filtered, renderItemsTable, true);
             break;
         }
         case 'centers': {
@@ -174,34 +258,34 @@ function applyGlobalSearch(page, term) {
                 c.Center_Name.toLowerCase().includes(term) ||
                 (c.GN_Division_Name || '').toLowerCase().includes(term) ||
                 (c.Contact_Person || '').toLowerCase().includes(term));
-            renderCentersTable(filtered);
+            renderPaginatedTable('centers', filtered, renderCentersTable, true);
             break;
         }
         case 'gn-divisions': {
             const filtered = currentData.gnDivisions.filter(g =>
                 g.GN_Division_Name.toLowerCase().includes(term) || (g.DS_Division || '').toLowerCase().includes(term));
-            renderGNDivisionsTable(filtered);
+            renderPaginatedTable('gn-divisions', filtered, renderGNDivisionsTable, true);
             break;
         }
         case 'incoming': {
             const filtered = currentData.incomingBills.filter(b =>
                 (b.Bill_Number || '').toLowerCase().includes(term) || b.Supplier_Name.toLowerCase().includes(term) ||
                 (b.Remarks || '').toLowerCase().includes(term));
-            renderIncomingBillsTable(filtered);
+            renderPaginatedTable('incoming-bills', filtered, renderIncomingBillsTable, true);
             break;
         }
         case 'donations': {
             const filtered = currentData.donationBills.filter(b =>
                 (b.Bill_Number || '').toLowerCase().includes(term) || b.Donor_Name.toLowerCase().includes(term) ||
                 (b.Remarks || '').toLowerCase().includes(term));
-            renderDonationBillsTable(filtered);
+            renderPaginatedTable('donation-bills', filtered, renderDonationBillsTable, true);
             break;
         }
         case 'outgoing': {
             const filtered = currentData.outgoingBills.filter(b =>
                 (b.Bill_Number || '').toLowerCase().includes(term) || b.Center_Name.toLowerCase().includes(term) ||
                 b.Officer_Name.toLowerCase().includes(term) || b.Officer_NIC.toLowerCase().includes(term));
-            renderOutgoingBillsTable(filtered);
+            renderPaginatedTable('outgoing-bills', filtered, renderOutgoingBillsTable, true);
             break;
         }
         default:
@@ -766,7 +850,7 @@ async function loadCurrentStock() {
     try {
         const stock = await window.api.stock.getCurrent();
         currentData.currentStock = stock;
-        renderCurrentStockTable(stock);
+        renderPaginatedTable('current-stock', stock, renderCurrentStockTable, true);
     } catch (error) {
         console.error('Error loading current stock:', error);
         showNotification('Failed to load current stock', 'error');
@@ -776,8 +860,6 @@ async function loadCurrentStock() {
 function renderCurrentStockTable(data) {
     const tbody = document.querySelector('#current-stock-table tbody');
     tbody.innerHTML = '';
-    const countEl = document.getElementById('current-stock-count');
-    if (countEl) countEl.textContent = data.length;
 
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" class="text-center">No stock data available</td></tr>';
@@ -809,7 +891,7 @@ async function loadItems() {
     try {
         const items = await window.api.items.getAll();
         currentData.items = items;
-        renderItemsTable(items);
+        renderPaginatedTable('items', items, renderItemsTable, true);
     } catch (error) {
         console.error('Error loading items:', error);
         showNotification('Failed to load items', 'error');
@@ -819,8 +901,6 @@ async function loadItems() {
 function renderItemsTable(data) {
     const tbody = document.querySelector('#items-table tbody');
     tbody.innerHTML = '';
-    const countEl = document.getElementById('items-count');
-    if (countEl) countEl.textContent = data.length;
 
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center">No items found</td></tr>';
@@ -959,7 +1039,7 @@ async function loadCenters() {
     try {
         const centers = await window.api.centers.getAll();
         currentData.centers = centers;
-        renderCentersTable(centers);
+        renderPaginatedTable('centers', centers, renderCentersTable, true);
     } catch (error) {
         console.error('Error loading centers:', error);
         showNotification('Failed to load centers', 'error');
@@ -1792,7 +1872,7 @@ async function loadGNDivisions() {
     try {
         const gnDivisions = await window.api.gnDivisions.getAll();
         currentData.gnDivisions = gnDivisions;
-        renderGNDivisionsTable(gnDivisions);
+        renderPaginatedTable('gn-divisions', gnDivisions, renderGNDivisionsTable, true);
     } catch (error) {
         console.error('Error loading GN divisions:', error);
         showNotification('Failed to load GN divisions', 'error');
@@ -1931,8 +2011,8 @@ async function loadCarePackages() {
         ]);
         currentData.carePackageTemplates = templates;
         currentData.carePackageIssues = issues;
-        renderCarePackageTemplatesTable(templates);
-        renderCarePackageIssuesTable(issues);
+        renderPaginatedTable('care-package-templates', templates, renderCarePackageTemplatesTable, true);
+        renderPaginatedTable('care-package-issues', issues, renderCarePackageIssuesTable, true);
     } catch (error) {
         console.error('Error loading care packages:', error);
         showNotification('Failed to load care packages', 'error');

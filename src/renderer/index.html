@@ -235,7 +235,6 @@
                 <!-- Current Stock Page -->
                 <div id="current-stock-page" class="page">
                     <div class="page-actions">
-                        <div class="page-count">Showing <b id="current-stock-count">0</b> items</div>
                         <div class="spacer"></div>
                         <button id="viewHistoryBtn" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>View History</button>
                     </div>
@@ -258,6 +257,7 @@
                                 <tbody></tbody>
                             </table>
                         </div>
+                        <div class="pagination" id="current-stock-pagination"></div>
                     </div>
                 </div>
 
@@ -286,6 +286,7 @@
                                 <tbody></tbody>
                             </table>
                         </div>
+                        <div class="pagination" id="incoming-bills-pagination"></div>
                     </div>
                 </div>
 
@@ -314,6 +315,7 @@
                                 <tbody></tbody>
                             </table>
                         </div>
+                        <div class="pagination" id="donation-bills-pagination"></div>
                     </div>
                 </div>
 
@@ -344,6 +346,7 @@
                                 <tbody></tbody>
                             </table>
                         </div>
+                        <div class="pagination" id="outgoing-bills-pagination"></div>
                     </div>
                 </div>
 
@@ -375,6 +378,7 @@
                                     <tbody></tbody>
                                 </table>
                             </div>
+                            <div class="pagination" id="care-package-templates-pagination"></div>
                         </div>
                     </div>
 
@@ -403,6 +407,7 @@
                                     <tbody></tbody>
                                 </table>
                             </div>
+                            <div class="pagination" id="care-package-issues-pagination"></div>
                         </div>
                     </div>
                 </div>
@@ -412,8 +417,6 @@
                     <div class="page-actions">
                         <button id="addItemBtn" class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add Item</button>
                         <button id="bulkUploadItemsBtn" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Bulk Upload CSV</button>
-                        <div class="spacer"></div>
-                        <div class="page-count"><b id="items-count">0</b> items</div>
                     </div>
                     <div class="card" style="padding:0;overflow:hidden">
                         <div class="table-container">
@@ -432,6 +435,7 @@
                                 <tbody></tbody>
                             </table>
                         </div>
+                        <div class="pagination" id="items-pagination"></div>
                     </div>
                 </div>
 
@@ -458,6 +462,7 @@
                                 <tbody></tbody>
                             </table>
                         </div>
+                        <div class="pagination" id="centers-pagination"></div>
                     </div>
                 </div>
 
@@ -482,6 +487,7 @@
                                 <tbody></tbody>
                             </table>
                         </div>
+                        <div class="pagination" id="gn-divisions-pagination"></div>
                     </div>
                 </div>
 
