@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMC Inventory Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Sinhala:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,73 +14,106 @@
         <!-- Sidebar Navigation -->
         <nav class="sidebar" id="sidebar">
             <div class="sidebar-header">
+                <div class="logo-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                </div>
                 <div class="logo">
                     <h2>DMC Inventory</h2>
                     <p>Divisional Secretariat Aranayake</p>
                 </div>
-                <button class="sidebar-toggle" id="sidebarToggle" title="Collapse Sidebar">
-                    <span class="toggle-icon">◀</span>
+                <button class="sidebar-toggle" id="sidebarToggle" title="Collapse sidebar">
+                    <svg id="collapseIconLeft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+                    <svg id="collapseIconRight" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="m10 6 6 6-6 6"/></svg>
                 </button>
             </div>
             <ul class="nav-menu">
-                <li class="nav-item active" data-page="dashboard">
-                    <span class="icon">📊</span>
+                <li class="nav-section-title">Main</li>
+                <li class="nav-item active" data-page="dashboard" title="Dashboard">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span>
                     <span>Dashboard</span>
                 </li>
-                <li class="nav-item" data-page="current-stock">
-                    <span class="icon">📦</span>
+                <li class="nav-item" data-page="current-stock" title="Current Stock">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>
                     <span>Current Stock</span>
                 </li>
-                <li class="nav-item" data-page="incoming">
-                    <span class="icon">📥</span>
+                <li class="nav-item" data-page="analytics" title="Analytics">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
+                    <span>Analytics</span>
+                </li>
+
+                <li class="nav-section-title">Transactions</li>
+                <li class="nav-item" data-page="incoming" title="Incoming Stock">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><path d="M19 21H5"/></svg></span>
                     <span>Incoming Stock</span>
                 </li>
-                <li class="nav-item" data-page="donations">
-                    <span class="icon">🎁</span>
+                <li class="nav-item" data-page="donations" title="Donations">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></span>
                     <span>Donations</span>
                 </li>
-                <li class="nav-item" data-page="outgoing">
-                    <span class="icon">📤</span>
-                    <span>Dispatch/Outgoing</span>
+                <li class="nav-item" data-page="outgoing" title="Dispatch / Outgoing">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h1"/><path d="M14 9h4l4 4v4a1 1 0 0 1-1 1h-1"/><circle cx="7" cy="18" r="2"/><path d="M10 18h4"/><circle cx="18" cy="18" r="2"/></svg></span>
+                    <span>Dispatch / Outgoing</span>
                 </li>
-                <li class="nav-item" data-page="care-packages">
-                    <span class="icon">📦</span>
+                <li class="nav-item" data-page="care-packages" title="Care Packages">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 4 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 16 8 4 8-4"/></svg></span>
                     <span>Care Packages</span>
                 </li>
-                <li class="nav-item" data-page="items">
-                    <span class="icon">🏷️</span>
+
+                <li class="nav-section-title">Master Data</li>
+                <li class="nav-item" data-page="items" title="Items Master">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.4"/></svg></span>
                     <span>Items Master</span>
                 </li>
-                <li class="nav-item" data-page="centers">
-                    <span class="icon">🏢</span>
+                <li class="nav-item" data-page="centers" title="Centers Master">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/></svg></span>
                     <span>Centers Master</span>
                 </li>
-                <li class="nav-item" data-page="gn-divisions">
-                    <span class="icon">🗺️</span>
+                <li class="nav-item" data-page="gn-divisions" title="GN Divisions">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg></span>
                     <span>GN Divisions</span>
                 </li>
-                <li class="nav-item" data-page="reports">
-                    <span class="icon">📊</span>
+
+                <li class="nav-section-title">System</li>
+                <li class="nav-item" data-page="reports" title="Reports">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span>
                     <span>Reports</span>
                 </li>
-                <li class="nav-item" data-page="settings">
-                    <span class="icon">⚙️</span>
+                <li class="nav-item" data-page="settings" title="Settings">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></span>
                     <span>Settings</span>
                 </li>
             </ul>
+            <div class="sidebar-status" id="sidebarStatus" title="">
+                <span class="sidebar-status-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/></svg>
+                </span>
+                <div class="sidebar-status-text">
+                    <div class="line1">Offline &middot; Local DB</div>
+                    <div class="line2">v<span id="app-version-sidebar">1.17.0</span></div>
+                </div>
+            </div>
         </nav>
 
         <!-- Main Content Area -->
         <main class="main-content">
             <header class="top-bar">
-                <button class="hamburger-btn" id="hamburgerBtn" title="Open Menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
-                <h1 id="page-title">Dashboard</h1>
+                <div class="top-bar-title">
+                    <h1 id="page-title">Dashboard</h1>
+                    <div class="top-bar-sub" id="page-subtitle">Overview &amp; low-stock alerts</div>
+                </div>
+                <div class="top-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input type="text" id="global-search" placeholder="Search this page…">
+                </div>
                 <div class="header-actions">
-                    <button id="refreshBtn" class="btn btn-secondary">🔄 Refresh</button>
+                    <button id="themeToggleBtn" class="icon-btn-square" title="Toggle theme">
+                        <svg id="themeIconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+                        <svg id="themeIconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+                    </button>
+                    <button id="refreshBtn" class="btn btn-secondary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Refresh
+                    </button>
                 </div>
             </header>
 
@@ -86,46 +122,49 @@
                 <div id="dashboard-page" class="page active">
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="stat-icon">📦</div>
+                            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div>
                             <div class="stat-info">
                                 <h3 id="total-items">0</h3>
                                 <p>Total Items</p>
                             </div>
                         </div>
                         <div class="stat-card low-stock">
-                            <div class="stat-icon">⚠️</div>
+                            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
                             <div class="stat-info">
                                 <h3 id="low-stock-count">0</h3>
                                 <p>Low Stock Items</p>
                             </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-icon">🏢</div>
+                        <div class="stat-card centers">
+                            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4"/></svg></div>
                             <div class="stat-info">
                                 <h3 id="total-centers">0</h3>
                                 <p>Active Centers</p>
                             </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-icon">📊</div>
+                        <div class="stat-card transactions">
+                            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></div>
                             <div class="stat-info">
                                 <h3 id="total-transactions">0</h3>
-                                <p>Total Transactions</p>
+                                <p>Transactions</p>
                             </div>
                         </div>
                     </div>
 
                     <div class="dashboard-content">
                         <div class="card">
-                            <h3>Low Stock Alert</h3>
+                            <div class="card-head">
+                                <div class="card-head-title"><span class="dot" style="background:#ea580c"></span><h3>Low Stock Alert</h3></div>
+                                <span class="pill" id="low-stock-pill">0 items need attention</span>
+                            </div>
                             <div class="table-container">
                                 <table id="low-stock-table">
                                     <thead>
                                         <tr>
                                             <th>Item Name</th>
                                             <th>Category</th>
-                                            <th>Current Qty</th>
-                                            <th>Reorder Level</th>
+                                            <th class="num">Current</th>
+                                            <th class="num">Reorder</th>
                                             <th>Unit</th>
                                         </tr>
                                     </thead>
@@ -133,28 +172,86 @@
                                 </table>
                             </div>
                         </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Recent Activity</h3></div>
+                            <div class="activity-list" id="recent-activity-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Page -->
+                <div id="analytics-page" class="page">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div>
+                            <div class="stat-info">
+                                <h3 id="an-total-stock">0</h3>
+                                <p>Total Stock Qty</p>
+                            </div>
+                        </div>
+                        <div class="stat-card centers">
+                            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.4"/></svg></div>
+                            <div class="stat-info">
+                                <h3 id="an-categories">0</h3>
+                                <p>Categories</p>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="border-color:var(--border-card)">
+                            <div class="stat-icon" style="background:var(--green-soft);color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><path d="M19 21H5"/></svg></div>
+                            <div class="stat-info">
+                                <h3 id="an-total-received">0</h3>
+                                <p>Total Received (all time)</p>
+                            </div>
+                        </div>
+                        <div class="stat-card transactions">
+                            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h1"/><path d="M14 9h4l4 4v4a1 1 0 0 1-1 1h-1"/><circle cx="7" cy="18" r="2"/><path d="M10 18h4"/><circle cx="18" cy="18" r="2"/></svg></div>
+                            <div class="stat-info">
+                                <h3 id="an-total-dispatched">0</h3>
+                                <p>Total Dispatched (all time)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="card chart-card">
+                            <div class="card-head"><h3>Stock by Category</h3></div>
+                            <div class="chart-body" id="chart-category"></div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-head"><h3>Incoming, Donations &amp; Outgoing &middot; Last 6 Months</h3></div>
+                            <div class="chart-body" id="chart-trend"></div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-head"><h3>Top Items by Movement</h3></div>
+                            <div class="chart-body" id="chart-top-items"></div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-head"><h3>Dispatch by Center</h3></div>
+                            <div class="chart-body" id="chart-centers"></div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Current Stock Page -->
                 <div id="current-stock-page" class="page">
                     <div class="page-actions">
-                        <input type="text" id="stock-search" class="search-input" placeholder="Search items...">
-                        <button id="viewHistoryBtn" class="btn btn-secondary">📋 View History</button>
+                        <div class="page-count">Showing <b id="current-stock-count">0</b> items</div>
+                        <div class="spacer"></div>
+                        <button id="viewHistoryBtn" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>View History</button>
                     </div>
-                    <div class="card">
+                    <div class="card" style="padding:0;overflow:hidden">
                         <div class="table-container">
                             <table id="current-stock-table">
                                 <thead>
                                     <tr>
-                                        <th>Item ID</th>
+                                        <th>ID</th>
                                         <th>Item Name</th>
                                         <th>Category</th>
-                                        <th>Current Quantity</th>
+                                        <th class="num">Qty</th>
                                         <th>Unit</th>
-                                        <th>Total Incoming</th>
-                                        <th>Total Outgoing</th>
-                                        <th>Reorder Level</th>
+                                        <th class="num">In</th>
+                                        <th class="num">Out</th>
+                                        <th class="num">Reorder</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
@@ -167,25 +264,23 @@
                 <!-- Incoming Stock Page -->
                 <div id="incoming-page" class="page">
                     <div class="page-actions">
-                        <button id="addIncomingBillBtn" class="btn btn-primary">➕ Add Incoming Bill (GRN)</button>
-                        <button id="exportIncomingBtn" class="btn btn-secondary">📤 Export CSV</button>
-                        <label style="margin-left:10px;">
-                            <input type="checkbox" id="includeSummaryIncoming" checked>
-                            Include Summary
-                        </label>
+                        <button id="addIncomingBillBtn" class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add Incoming Bill (GRN)</button>
+                        <div class="spacer"></div>
+                        <label><input type="checkbox" id="includeSummaryIncoming" checked>Include summary</label>
+                        <button id="exportIncomingBtn" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV</button>
                     </div>
-                    <div class="card">
+                    <div class="card" style="padding:0;overflow:hidden">
                         <div class="table-container">
                             <table id="incoming-bills-table">
                                 <thead>
                                     <tr>
-                                        <th>Bill Number</th>
+                                        <th>Bill No.</th>
                                         <th>Date</th>
                                         <th>Supplier</th>
-                                        <th>Items</th>
-                                        <th>Total Qty</th>
+                                        <th class="num">Items</th>
+                                        <th class="num">Total Qty</th>
                                         <th>Remarks</th>
-                                        <th>Actions</th>
+                                        <th class="num">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -197,25 +292,23 @@
                 <!-- Donations Page -->
                 <div id="donations-page" class="page">
                     <div class="page-actions">
-                        <button id="addDonationBillBtn" class="btn btn-primary">➕ Add Donation Bill</button>
-                        <button id="exportDonationsBtn" class="btn btn-secondary">📤 Export CSV</button>
-                        <label style="margin-left:10px;">
-                            <input type="checkbox" id="includeSummaryDonations" checked>
-                            Include Summary
-                        </label>
+                        <button id="addDonationBillBtn" class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add Donation Bill</button>
+                        <div class="spacer"></div>
+                        <label><input type="checkbox" id="includeSummaryDonations" checked>Include summary</label>
+                        <button id="exportDonationsBtn" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV</button>
                     </div>
-                    <div class="card">
+                    <div class="card" style="padding:0;overflow:hidden">
                         <div class="table-container">
                             <table id="donation-bills-table">
                                 <thead>
                                     <tr>
-                                        <th>Bill Number</th>
+                                        <th>Bill No.</th>
                                         <th>Date</th>
                                         <th>Donor</th>
-                                        <th>Items</th>
-                                        <th>Total Qty</th>
+                                        <th class="num">Items</th>
+                                        <th class="num">Total Qty</th>
                                         <th>Remarks</th>
-                                        <th>Actions</th>
+                                        <th class="num">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -227,27 +320,25 @@
                 <!-- Outgoing Stock Page -->
                 <div id="outgoing-page" class="page">
                     <div class="page-actions">
-                        <button id="addOutgoingBillBtn" class="btn btn-primary">➕ Add Dispatch Bill</button>
-                        <button id="exportOutgoingBtn" class="btn btn-secondary">📤 Export CSV</button>
-                        <label style="margin-left:10px;">
-                            <input type="checkbox" id="includeSummaryOutgoing" checked>
-                            Include Summary
-                        </label>
+                        <button id="addOutgoingBillBtn" class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add Dispatch Bill</button>
+                        <div class="spacer"></div>
+                        <label><input type="checkbox" id="includeSummaryOutgoing" checked>Include summary</label>
+                        <button id="exportOutgoingBtn" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV</button>
                     </div>
-                    <div class="card">
+                    <div class="card" style="padding:0;overflow:hidden">
                         <div class="table-container">
                             <table id="outgoing-bills-table">
                                 <thead>
                                     <tr>
-                                        <th>Bill Number</th>
+                                        <th>Bill No.</th>
                                         <th>Date</th>
                                         <th>Center</th>
                                         <th>Officer</th>
                                         <th>NIC</th>
-                                        <th>Items</th>
-                                        <th>Total Qty</th>
+                                        <th class="num">Items</th>
+                                        <th class="num">Total Qty</th>
                                         <th>Remarks</th>
-                                        <th>Actions</th>
+                                        <th class="num">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -259,26 +350,26 @@
                 <!-- Care Packages Page -->
                 <div id="care-packages-page" class="page">
                     <div class="tabs">
-                        <button class="tab-btn active" data-tab="templates">Package Templates</button>
-                        <button class="tab-btn" data-tab="issues">Package Issues</button>
+                        <button class="tab-btn active" data-tab="templates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 4 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4"/></svg>Package Templates</button>
+                        <button class="tab-btn" data-tab="issues"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v14"/><path d="m6 13 6 6 6-6"/></svg>Package Issues</button>
                     </div>
 
                     <!-- Package Templates Tab -->
                     <div id="templates-tab" class="tab-content active">
                         <div class="page-actions">
-                            <button id="addCarePackageTemplateBtn" class="btn btn-primary">➕ Create Package Template</button>
+                            <button id="addCarePackageTemplateBtn" class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Create Package Template</button>
                         </div>
-                        <div class="card">
+                        <div class="card" style="padding:0;overflow:hidden">
                             <div class="table-container">
                                 <table id="care-package-templates-table">
                                     <thead>
                                         <tr>
-                                            <th>Template ID</th>
+                                            <th>ID</th>
                                             <th>Package Name</th>
                                             <th>Description</th>
-                                            <th>Items Count</th>
+                                            <th class="num">Items</th>
                                             <th>Status</th>
-                                            <th>Actions</th>
+                                            <th class="num">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -290,23 +381,23 @@
                     <!-- Package Issues Tab -->
                     <div id="issues-tab" class="tab-content">
                         <div class="page-actions">
-                            <button id="issueCarePackageBtn" class="btn btn-primary">➕ Issue Care Packages</button>
+                            <button id="issueCarePackageBtn" class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Issue Care Packages</button>
                         </div>
-                        <div class="card">
+                        <div class="card" style="padding:0;overflow:hidden">
                             <div class="table-container">
                                 <table id="care-package-issues-table">
                                     <thead>
                                         <tr>
-                                            <th>Issue ID</th>
-                                            <th>Date Issued</th>
-                                            <th>Package Name</th>
-                                            <th>Qty Issued</th>
+                                            <th>ID</th>
+                                            <th>Date</th>
+                                            <th>Package</th>
+                                            <th class="num">Qty</th>
                                             <th>Recipient Type</th>
                                             <th>Recipient</th>
                                             <th>Officer</th>
                                             <th>Officer NIC</th>
                                             <th>Remarks</th>
-                                            <th>Actions</th>
+                                            <th class="num">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -319,21 +410,23 @@
                 <!-- Items Master Page -->
                 <div id="items-page" class="page">
                     <div class="page-actions">
-                        <button id="addItemBtn" class="btn btn-primary">➕ Add Item</button>
-                        <button id="bulkUploadItemsBtn" class="btn btn-secondary">📤 Bulk Upload CSV</button>
+                        <button id="addItemBtn" class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add Item</button>
+                        <button id="bulkUploadItemsBtn" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Bulk Upload CSV</button>
+                        <div class="spacer"></div>
+                        <div class="page-count"><b id="items-count">0</b> items</div>
                     </div>
-                    <div class="card">
+                    <div class="card" style="padding:0;overflow:hidden">
                         <div class="table-container">
                             <table id="items-table">
                                 <thead>
                                     <tr>
-                                        <th>Item ID</th>
+                                        <th>ID</th>
                                         <th>Item Name</th>
                                         <th>Unit</th>
                                         <th>Category</th>
-                                        <th>Reorder Level</th>
+                                        <th class="num">Reorder</th>
                                         <th>Status</th>
-                                        <th>Actions</th>
+                                        <th class="num">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -345,21 +438,21 @@
                 <!-- Centers Master Page -->
                 <div id="centers-page" class="page">
                     <div class="page-actions">
-                        <button id="addCenterBtn" class="btn btn-primary">➕ Add Center</button>
-                        <button id="bulkUploadCentersBtn" class="btn btn-secondary">📤 Bulk Upload CSV</button>
+                        <button id="addCenterBtn" class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add Center</button>
+                        <button id="bulkUploadCentersBtn" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Bulk Upload CSV</button>
                     </div>
-                    <div class="card">
+                    <div class="card" style="padding:0;overflow:hidden">
                         <div class="table-container">
                             <table id="centers-table">
                                 <thead>
                                     <tr>
-                                        <th>Center ID</th>
+                                        <th>ID</th>
                                         <th>Center Name</th>
                                         <th>GN Division</th>
                                         <th>Contact Person</th>
                                         <th>Phone</th>
                                         <th>Status</th>
-                                        <th>Actions</th>
+                                        <th class="num">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -371,10 +464,10 @@
                 <!-- GN Divisions Master Page -->
                 <div id="gn-divisions-page" class="page">
                     <div class="page-actions">
-                        <button id="addGNDivisionBtn" class="btn btn-primary">➕ Add GN Division</button>
-                        <button id="bulkUploadGNBtn" class="btn btn-secondary">📤 Bulk Upload CSV</button>
+                        <button id="addGNDivisionBtn" class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add GN Division</button>
+                        <button id="bulkUploadGNBtn" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Bulk Upload CSV</button>
                     </div>
-                    <div class="card">
+                    <div class="card" style="padding:0;overflow:hidden">
                         <div class="table-container">
                             <table id="gn-divisions-table">
                                 <thead>
@@ -383,7 +476,7 @@
                                         <th>GN Division Name</th>
                                         <th>DS Division</th>
                                         <th>Status</th>
-                                        <th>Actions</th>
+                                        <th class="num">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -394,10 +487,9 @@
 
                 <!-- Reports Page -->
                 <div id="reports-page" class="page">
-                    <div class="card">
-                        <h3>Generate PDF Reports</h3>
-                        
-                        <!-- Report Type Selection -->
+                    <div class="card" style="max-width:760px">
+                        <h3>Generate PDF &amp; CSV Reports</h3>
+
                         <div class="form-group">
                             <label>Report Type</label>
                             <select id="reportType" class="form-control">
@@ -410,7 +502,6 @@
                             </select>
                         </div>
 
-                        <!-- Center Selection (for center-wise report) -->
                         <div id="centerSelectionSection" class="form-group" style="display: none;">
                             <label>Select Center *</label>
                             <select id="reportCenter" class="form-control">
@@ -418,49 +509,36 @@
                             </select>
                         </div>
 
-                        <!-- Date Range (for time-based reports) -->
-                        <div id="dateRangeSection" style="display: none;">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>From Date</label>
-                                    <input type="date" id="reportDateFrom" class="form-control">
-                                </div>
-                                <div class="form-group">
-                                    <label>To Date</label>
-                                    <input type="date" id="reportDateTo" class="form-control">
-                                </div>
+                        <div id="dateRangeSection" class="form-row" style="display: none;">
+                            <div class="form-group">
+                                <label>From Date</label>
+                                <input type="date" id="reportDateFrom" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>To Date</label>
+                                <input type="date" id="reportDateTo" class="form-control">
                             </div>
                         </div>
 
-                        <!-- Item Selection -->
                         <div class="form-group">
-                            <label>
-                                <input type="checkbox" id="selectAllItems" checked>
-                                Select All Items
-                            </label>
+                            <label><input type="checkbox" id="selectAllItems" checked> Select All Items</label>
                         </div>
 
                         <div id="itemSelectionSection" style="display: none;">
                             <div class="form-group">
                                 <label>Select Items</label>
-                                <div id="itemsList" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-                                    <!-- Items checkboxes will be populated here -->
-                                </div>
+                                <div id="itemsList"></div>
                             </div>
                         </div>
 
-                        <div class="form-actions">
-                            <button id="generateReportBtn" class="btn btn-primary">📄 Generate PDF Report</button>
-                            <button id="exportCsvBtn" class="btn btn-secondary">📤 Export CSV</button>
-                            <label style="margin-left:10px;">
-                                <input type="checkbox" id="includeSummaryCsv" checked>
-                                Include Summary CSV
-                            </label>
+                        <div class="form-actions" style="justify-content:flex-start;border-top:none;margin-top:6px;padding-top:0;align-items:center;flex-wrap:wrap">
+                            <button id="generateReportBtn" class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Generate PDF Report</button>
+                            <button id="exportCsvBtn" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV</button>
+                            <label style="margin-left:4px"><input type="checkbox" id="includeSummaryCsv" checked>Include Summary CSV</label>
                         </div>
                     </div>
 
-                    <!-- Report Preview Info -->
-                    <div class="card" id="reportPreviewCard" style="display: none;">
+                    <div class="card" id="reportPreviewCard" style="display: none; max-width:760px">
                         <h3>Report Preview</h3>
                         <div id="reportPreview"></div>
                     </div>
@@ -468,33 +546,52 @@
 
                 <!-- Settings Page -->
                 <div id="settings-page" class="page">
-                    <div class="card">
+                    <div class="card" style="max-width:760px">
                         <h3>Database Management</h3>
-                        <div class="settings-group">
-                            <button id="exportDbBtn" class="btn btn-primary">💾 Export Database</button>
-                            <p class="help-text">Export the current database to a backup file</p>
-                        </div>
-                        <div class="settings-group">
-                            <button id="importDbBtn" class="btn btn-warning">📂 Import Database</button>
-                            <p class="help-text">Import a database from a backup file (will replace current data)</p>
+                        <p class="help-text" style="margin-top:-8px;margin-bottom:18px">Your data is stored locally. Back it up regularly.</p>
+                        <div class="settings-cards">
+                            <div class="settings-card">
+                                <div class="settings-card-head">
+                                    <span class="settings-card-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+                                    <div class="settings-card-title">Export Database</div>
+                                </div>
+                                <p>Save a backup copy of the current database file.</p>
+                                <button id="exportDbBtn" class="btn btn-primary" style="width:100%;justify-content:center">Export Backup</button>
+                            </div>
+                            <div class="settings-card">
+                                <div class="settings-card-head">
+                                    <span class="settings-card-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+                                    <div class="settings-card-title">Import Database</div>
+                                </div>
+                                <p>Restore from a backup — this replaces current data.</p>
+                                <button id="importDbBtn" class="btn btn-warning" style="width:100%;justify-content:center">Import Backup</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="card">
+                    <div class="card" style="max-width:760px">
                         <h3>About</h3>
-                        <p><strong>Application:</strong> DMC Inventory Management System</p>
-                        <p><strong>Version:</strong> <span id="app-version">1.16.0</span></p>
-                        <p><strong>Purpose:</strong> Track inventory for Disaster Management Centers</p>
+                        <div class="about-grid">
+                            <div class="label">Application</div><div class="value">DMC Inventory Management System</div>
+                            <div class="label">Version</div><div class="value mono"><span id="app-version">1.17.0</span></div>
+                            <div class="label">Office</div><div class="value">Divisional Secretariat, Aranayake</div>
+                            <div class="label">Purpose</div><div class="value">Track inventory for Disaster Management Centers</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <!-- Chart tooltip (shared across all analytics charts) -->
+    <div id="chart-tooltip" class="chart-tooltip" role="tooltip"></div>
+
     <!-- Modal Container -->
     <div id="modal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2 id="modal-title">Modal Title</h2>
+            <div class="modal-header">
+                <h2 id="modal-title">Modal Title</h2>
+                <span class="close">&times;</span>
+            </div>
             <div id="modal-body"></div>
         </div>
     </div>
