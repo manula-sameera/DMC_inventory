@@ -7,7 +7,7 @@ async function loadIncomingStock() {
     try {
         const bills = await window.api.incoming.bills.getAll();
         currentData.incomingBills = bills;
-        renderIncomingBillsTable(bills);
+        renderPaginatedTable('incoming-bills', bills, renderIncomingBillsTable, true);
     } catch (error) {
         console.error('Error loading incoming bills:', error);
         showNotification('Failed to load incoming bills', 'error');
@@ -26,17 +26,17 @@ function renderIncomingBillsTable(data) {
     data.forEach(bill => {
         const row = `
             <tr>
-                <td><strong>${escapeHtml(bill.Bill_Number || 'N/A')}</strong></td>
-                <td>${formatDate(bill.Date_Received)}</td>
-                <td>${escapeHtml(bill.Supplier_Name)}</td>
-                <td><span class="badge">${bill.Item_Count || 0} items</span></td>
-                <td><strong>${bill.Total_Quantity || 0}</strong></td>
-                <td>${escapeHtml(bill.Remarks || '-')}</td>
-                <td class="actions">
-                    <button class="btn-icon btn-view" onclick="viewIncomingBillDetails(${bill.Bill_ID})" title="View">👁️</button>
-                    <button class="btn-icon btn-edit" onclick="showEditIncomingBillModal(${bill.Bill_ID})" title="Edit">✏️</button>
-                    <button class="btn-icon btn-delete" onclick="deleteIncomingBill(${bill.Bill_ID})" title="Delete">🗑️</button>
-                </td>
+                <td class="mono-cell" style="font-weight:600;color:var(--blue)">${escapeHtml(bill.Bill_Number || 'N/A')}</td>
+                <td class="mono-cell">${formatDate(bill.Date_Received)}</td>
+                <td class="name-cell">${escapeHtml(bill.Supplier_Name)}</td>
+                <td class="mono-cell" style="text-align:right">${bill.Item_Count || 0}</td>
+                <td class="qty-cell">${bill.Total_Quantity || 0}</td>
+                <td class="muted-cell">${escapeHtml(bill.Remarks || '-')}</td>
+                <td class="actions"><div class="actions-row">
+                    ${actionBtn('btn-view', 'View', `viewIncomingBillDetails(${bill.Bill_ID})`, ICONS.view)}
+                    ${actionBtn('btn-edit', 'Edit', `showEditIncomingBillModal(${bill.Bill_ID})`, ICONS.edit)}
+                    ${actionBtn('btn-delete', 'Delete', `deleteIncomingBill(${bill.Bill_ID})`, ICONS.delete)}
+                </div></td>
             </tr>
         `;
         tbody.innerHTML += row;
@@ -78,9 +78,10 @@ async function showAddIncomingBillModal() {
                         <tbody id="billItemsBody"></tbody>
                     </table>
                 </div>
-                <button type="button" class="btn btn-secondary" onclick="addIncomingItemRow()">+ Add Item</button>
+                <button type="button" class="btn-add-item" onclick="addIncomingItemRow()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add another item</button>
+                <div class="bill-total-row">Total quantity: <b id="billTotalValue">0.00</b></div>
             </div>
-            
+
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Bill</button>
@@ -89,6 +90,7 @@ async function showAddIncomingBillModal() {
     `;
 
     showModal('Add Incoming Bill (GRN)', modalBody, true);
+    attachBillTotalListener();
 
     // Load suppliers for autocomplete (non-blocking)
     loadSuppliersList();
@@ -127,7 +129,7 @@ function addIncomingItemRow(item = null) {
             <input type="text" class="item-remarks" value="${item ? escapeHtml(item.Item_Remarks || '') : ''}" placeholder="Optional">
         </td>
         <td>
-            <button type="button" class="btn-remove-item" onclick="removeItemRow('${rowId}')">×</button>
+            <button type="button" class="btn-remove-item" onclick="removeItemRow('${rowId}')">${ICONS.remove}</button>
         </td>
     `;
 
@@ -167,6 +169,32 @@ function updateItemCount() {
     if (countEl) {
         countEl.textContent = `(${count} item${count !== 1 ? 's' : ''})`;
     }
+    updateBillTotalDisplay();
+}
+
+// Live running total across bill line items (auto-detects quantity vs issued-qty column)
+function updateBillTotalDisplay() {
+    const el = document.getElementById('billTotalValue');
+    if (!el) return;
+    const selector = document.querySelector('#billItemsBody .item-issued') ? '.item-issued' : '.item-quantity';
+    let total = 0;
+    document.querySelectorAll('#billItemsBody ' + selector).forEach(inp => {
+        const v = parseFloat(inp.value);
+        if (!isNaN(v)) total += v;
+    });
+    el.textContent = total.toFixed(2);
+}
+
+// Attach a delegated listener so the total updates live as quantities are typed
+function attachBillTotalListener() {
+    const tbody = document.getElementById('billItemsBody');
+    if (!tbody || tbody.dataset.totalBound) return;
+    tbody.dataset.totalBound = '1';
+    tbody.addEventListener('input', (e) => {
+        if (e.target.classList.contains('item-quantity') || e.target.classList.contains('item-issued')) {
+            updateBillTotalDisplay();
+        }
+    });
 }
 
 async function handleIncomingBillSubmit(e) {
@@ -315,9 +343,10 @@ async function showEditIncomingBillModal(billId) {
                             <tbody id="billItemsBody"></tbody>
                         </table>
                     </div>
-                    <button type="button" class="btn btn-secondary" onclick="addIncomingItemRow()">+ Add Item</button>
+                    <button type="button" class="btn-add-item" onclick="addIncomingItemRow()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add another item</button>
+                    <div class="bill-total-row">Total quantity: <b id="billTotalValue">0.00</b></div>
                 </div>
-                
+
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Update Bill</button>
@@ -326,6 +355,7 @@ async function showEditIncomingBillModal(billId) {
         `;
 
         showModal('Edit Incoming Bill', modalBody, true);
+        attachBillTotalListener();
 
         // Load suppliers
         loadSuppliersList();
@@ -432,7 +462,7 @@ async function loadDonations() {
     try {
         const bills = await window.api.donations.bills.getAll();
         currentData.donationBills = bills;
-        renderDonationBillsTable(bills);
+        renderPaginatedTable('donation-bills', bills, renderDonationBillsTable, true);
     } catch (error) {
         console.error('Error loading donation bills:', error);
         showNotification('Failed to load donation bills', 'error');
@@ -451,17 +481,17 @@ function renderDonationBillsTable(data) {
     data.forEach(bill => {
         const row = `
             <tr>
-                <td><strong>${escapeHtml(bill.Bill_Number || 'N/A')}</strong></td>
-                <td>${formatDate(bill.Date_Received)}</td>
-                <td>${escapeHtml(bill.Donor_Name)}</td>
-                <td><span class="badge">${bill.Item_Count || 0} items</span></td>
-                <td><strong>${bill.Total_Quantity || 0}</strong></td>
-                <td>${escapeHtml(bill.Remarks || '-')}</td>
-                <td class="actions">
-                    <button class="btn-icon btn-view" onclick="viewDonationBillDetails(${bill.Bill_ID})" title="View">👁️</button>
-                    <button class="btn-icon btn-edit" onclick="showEditDonationBillModal(${bill.Bill_ID})" title="Edit">✏️</button>
-                    <button class="btn-icon btn-delete" onclick="deleteDonationBill(${bill.Bill_ID})" title="Delete">🗑️</button>
-                </td>
+                <td class="mono-cell" style="font-weight:600;color:var(--blue)">${escapeHtml(bill.Bill_Number || 'N/A')}</td>
+                <td class="mono-cell">${formatDate(bill.Date_Received)}</td>
+                <td class="name-cell">${escapeHtml(bill.Donor_Name)}</td>
+                <td class="mono-cell" style="text-align:right">${bill.Item_Count || 0}</td>
+                <td class="qty-cell">${bill.Total_Quantity || 0}</td>
+                <td class="muted-cell">${escapeHtml(bill.Remarks || '-')}</td>
+                <td class="actions"><div class="actions-row">
+                    ${actionBtn('btn-view', 'View', `viewDonationBillDetails(${bill.Bill_ID})`, ICONS.view)}
+                    ${actionBtn('btn-edit', 'Edit', `showEditDonationBillModal(${bill.Bill_ID})`, ICONS.edit)}
+                    ${actionBtn('btn-delete', 'Delete', `deleteDonationBill(${bill.Bill_ID})`, ICONS.delete)}
+                </div></td>
             </tr>
         `;
         tbody.innerHTML += row;
@@ -503,9 +533,10 @@ async function showAddDonationBillModal() {
                         <tbody id="billItemsBody"></tbody>
                     </table>
                 </div>
-                <button type="button" class="btn btn-secondary" onclick="addDonationItemRow()">+ Add Item</button>
+                <button type="button" class="btn-add-item" onclick="addDonationItemRow()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add another item</button>
+                <div class="bill-total-row">Total quantity: <b id="billTotalValue">0.00</b></div>
             </div>
-            
+
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Bill</button>
@@ -514,6 +545,7 @@ async function showAddDonationBillModal() {
     `;
 
     showModal('Add Donation Bill', modalBody, true);
+    attachBillTotalListener();
 
     // Load donors for autocomplete (non-blocking)
     loadDonorsList();
@@ -552,7 +584,7 @@ function addDonationItemRow(item = null) {
             <input type="text" class="item-remarks" value="${item ? escapeHtml(item.Item_Remarks || '') : ''}" placeholder="Optional">
         </td>
         <td>
-            <button type="button" class="btn-remove-item" onclick="removeItemRow('${rowId}')">×</button>
+            <button type="button" class="btn-remove-item" onclick="removeItemRow('${rowId}')">${ICONS.remove}</button>
         </td>
     `;
 
@@ -727,9 +759,10 @@ async function showEditDonationBillModal(billId) {
                             <tbody id="billItemsBody"></tbody>
                         </table>
                     </div>
-                    <button type="button" class="btn btn-secondary" onclick="addDonationItemRow()">+ Add Item</button>
+                    <button type="button" class="btn-add-item" onclick="addDonationItemRow()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add another item</button>
+                    <div class="bill-total-row">Total quantity: <b id="billTotalValue">0.00</b></div>
                 </div>
-                
+
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Update Bill</button>
@@ -738,6 +771,7 @@ async function showEditDonationBillModal(billId) {
         `;
 
         showModal('Edit Donation Bill', modalBody, true);
+        attachBillTotalListener();
 
         // Load donors
         loadDonorsList();
@@ -845,7 +879,7 @@ async function loadOutgoingStock() {
     try {
         const bills = await window.api.outgoing.bills.getAll();
         currentData.outgoingBills = bills;
-        renderOutgoingBillsTable(bills);
+        renderPaginatedTable('outgoing-bills', bills, renderOutgoingBillsTable, true);
     } catch (error) {
         console.error('Error loading outgoing bills:', error);
         showNotification('Failed to load outgoing bills', 'error');
@@ -864,19 +898,19 @@ function renderOutgoingBillsTable(data) {
     data.forEach(bill => {
         const row = `
             <tr>
-                <td><strong>${escapeHtml(bill.Bill_Number || 'N/A')}</strong></td>
-                <td>${formatDate(bill.Date_Issued)}</td>
-                <td>${escapeHtml(bill.Center_Name)}</td>
+                <td class="mono-cell" style="font-weight:600;color:var(--blue)">${escapeHtml(bill.Bill_Number || 'N/A')}</td>
+                <td class="mono-cell">${formatDate(bill.Date_Issued)}</td>
+                <td class="name-cell">${escapeHtml(bill.Center_Name)}</td>
                 <td>${escapeHtml(bill.Officer_Name)}</td>
-                <td>${escapeHtml(bill.Officer_NIC)}</td>
-                <td><span class="badge">${bill.Item_Count || 0} items</span></td>
-                <td><strong>${bill.Total_Quantity || 0}</strong></td>
-                <td>${escapeHtml(bill.Remarks || '-')}</td>
-                <td class="actions">
-                    <button class="btn-icon btn-view" onclick="viewOutgoingBillDetails(${bill.Bill_ID})" title="View">👁️</button>
-                    <button class="btn-icon btn-edit" onclick="showEditOutgoingBillModal(${bill.Bill_ID})" title="Edit">✏️</button>
-                    <button class="btn-icon btn-delete" onclick="deleteOutgoingBill(${bill.Bill_ID})" title="Delete">🗑️</button>
-                </td>
+                <td class="mono-cell" style="color:var(--muted-3)">${escapeHtml(bill.Officer_NIC)}</td>
+                <td class="mono-cell" style="text-align:right">${bill.Item_Count || 0}</td>
+                <td class="qty-cell">${bill.Total_Quantity || 0}</td>
+                <td class="muted-cell">${escapeHtml(bill.Remarks || '-')}</td>
+                <td class="actions"><div class="actions-row">
+                    ${actionBtn('btn-view', 'View', `viewOutgoingBillDetails(${bill.Bill_ID})`, ICONS.view)}
+                    ${actionBtn('btn-edit', 'Edit', `showEditOutgoingBillModal(${bill.Bill_ID})`, ICONS.edit)}
+                    ${actionBtn('btn-delete', 'Delete', `deleteOutgoingBill(${bill.Bill_ID})`, ICONS.delete)}
+                </div></td>
             </tr>
         `;
         tbody.innerHTML += row;
@@ -926,9 +960,10 @@ async function showAddOutgoingBillModal() {
                         <tbody id="billItemsBody"></tbody>
                     </table>
                 </div>
-                <button type="button" class="btn btn-secondary" onclick="addOutgoingItemRow()">+ Add Item</button>
+                <button type="button" class="btn-add-item" onclick="addOutgoingItemRow()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add another item</button>
+                <div class="bill-total-row">Total quantity issued: <b id="billTotalValue">0.00</b></div>
             </div>
-            
+
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Bill</button>
@@ -937,6 +972,7 @@ async function showAddOutgoingBillModal() {
     `;
 
     showModal('Add Dispatch Bill', modalBody, true);
+    attachBillTotalListener();
 
     // Attach form submit handler immediately
     const form = document.getElementById('outgoingBillForm');
@@ -991,7 +1027,7 @@ function addOutgoingItemRow(item = null) {
             <input type="text" class="item-remarks" value="${item ? escapeHtml(item.Item_Remarks || '') : ''}" placeholder="Optional">
         </td>
         <td>
-            <button type="button" class="btn-remove-item" onclick="removeItemRow('${rowId}')">×</button>
+            <button type="button" class="btn-remove-item" onclick="removeItemRow('${rowId}')">${ICONS.remove}</button>
         </td>
     `;
 
@@ -1193,9 +1229,10 @@ async function showEditOutgoingBillModal(billId) {
                             <tbody id="billItemsBody"></tbody>
                         </table>
                     </div>
-                    <button type="button" class="btn btn-secondary" onclick="addOutgoingItemRow()">+ Add Item</button>
+                    <button type="button" class="btn-add-item" onclick="addOutgoingItemRow()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add another item</button>
+                    <div class="bill-total-row">Total quantity issued: <b id="billTotalValue">0.00</b></div>
                 </div>
-                
+
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Update Bill</button>
@@ -1204,6 +1241,7 @@ async function showEditOutgoingBillModal(billId) {
         `;
 
         showModal('Edit Dispatch Bill', modalBody, true);
+        attachBillTotalListener();
 
         // Load centers and items
         await Promise.all([ensureCentersLoaded(), ensureItemsLoaded()]);

@@ -1,3 +1,103 @@
+// Shared inline SVG icons (line-icon style)
+const ICONS = {
+    view: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    remove: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
+};
+
+function actionBtn(cls, title, onclick, icon) {
+    return `<button class="btn-icon ${cls}" title="${title}" onclick="${onclick}">${icon}</button>`;
+}
+
+function statusBadge(label, cls) {
+    return `<span class="status-badge ${cls}"><span class="dot"></span>${escapeHtml(label)}</span>`;
+}
+
+// ==================== Pagination ====================
+// Shared client-side pagination for data tables. Wraps an existing render*Table(rows)
+// function: slices the full dataset to the current page and re-renders the pagination
+// bar. Does NOT touch export/report code — those always query the full dataset fresh
+// via IPC, independent of whatever page is on screen.
+const PAGE_SIZE_DEFAULT = 15;
+const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100];
+const paginationState = {};
+
+function getPaginationState(tableKey) {
+    if (!paginationState[tableKey]) {
+        paginationState[tableKey] = { page: 1, pageSize: PAGE_SIZE_DEFAULT };
+    }
+    return paginationState[tableKey];
+}
+
+// Slice fullData to the current page, render the rows via renderRowsFn, and draw controls.
+// Pass resetPage=true whenever fullData is a fresh load or a new search/filter result.
+function renderPaginatedTable(tableKey, fullData, renderRowsFn, resetPage) {
+    const state = getPaginationState(tableKey);
+    if (resetPage) state.page = 1;
+
+    const totalItems = fullData.length;
+    const totalPages = Math.max(Math.ceil(totalItems / state.pageSize), 1);
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
+
+    const startIdx = (state.page - 1) * state.pageSize;
+    const pageData = fullData.slice(startIdx, startIdx + state.pageSize);
+    renderRowsFn(pageData);
+
+    renderPaginationControls(tableKey, totalItems, () => renderPaginatedTable(tableKey, fullData, renderRowsFn, false));
+}
+
+function renderPaginationControls(tableKey, totalItems, onChange) {
+    const el = document.getElementById(`${tableKey}-pagination`);
+    if (!el) return;
+
+    if (totalItems === 0) {
+        el.innerHTML = '';
+        return;
+    }
+
+    const state = getPaginationState(tableKey);
+    const totalPages = Math.max(Math.ceil(totalItems / state.pageSize), 1);
+    const start = (state.page - 1) * state.pageSize + 1;
+    const end = Math.min(state.page * state.pageSize, totalItems);
+
+    el.innerHTML = `
+        <div class="pagination-info">Showing <b>${start}–${end}</b> of <b>${totalItems}</b></div>
+        <div class="pagination-controls">
+            <select class="pagination-size" title="Rows per page">
+                ${PAGE_SIZE_OPTIONS.map(n => `<option value="${n}" ${n === state.pageSize ? 'selected' : ''}>${n} / page</option>`).join('')}
+            </select>
+            <button type="button" class="pagination-btn" data-action="first" ${state.page === 1 ? 'disabled' : ''} title="First page">&laquo;</button>
+            <button type="button" class="pagination-btn" data-action="prev" ${state.page === 1 ? 'disabled' : ''} title="Previous page">&lsaquo;</button>
+            <span class="pagination-page">${state.page} / ${totalPages}</span>
+            <button type="button" class="pagination-btn" data-action="next" ${state.page === totalPages ? 'disabled' : ''} title="Next page">&rsaquo;</button>
+            <button type="button" class="pagination-btn" data-action="last" ${state.page === totalPages ? 'disabled' : ''} title="Last page">&raquo;</button>
+        </div>
+    `;
+
+    el.querySelectorAll('.pagination-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            const action = btn.dataset.action;
+            if (action === 'first') state.page = 1;
+            else if (action === 'prev') state.page = Math.max(1, state.page - 1);
+            else if (action === 'next') state.page = Math.min(totalPages, state.page + 1);
+            else if (action === 'last') state.page = totalPages;
+            onChange();
+        });
+    });
+
+    const sizeSelect = el.querySelector('.pagination-size');
+    if (sizeSelect) {
+        sizeSelect.addEventListener('change', () => {
+            state.pageSize = parseInt(sizeSelect.value, 10) || PAGE_SIZE_DEFAULT;
+            state.page = 1;
+            onChange();
+        });
+    }
+}
+
 // Application State
 let currentData = {
     items: [],
@@ -19,9 +119,11 @@ let currentData = {
 document.addEventListener('DOMContentLoaded', () => {
     initializeNavigation();
     initializeSidebar();
+    initializeTheme();
+    initializeGlobalSearch();
     initializeEventListeners();
     loadDashboard();
-    
+
     // Pre-load frequently used data in background to prevent UI blocking
     preloadCommonData();
 });
@@ -73,24 +175,121 @@ function initializeNavigation() {
 function initializeSidebar() {
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
-    const hamburgerBtn = document.getElementById('hamburgerBtn');
 
-    // Toggle sidebar collapse
+    const applyCollapsedUI = (collapsed) => {
+        sidebar.classList.toggle('collapsed', collapsed);
+        document.getElementById('collapseIconLeft').style.display = collapsed ? 'none' : '';
+        document.getElementById('collapseIconRight').style.display = collapsed ? '' : 'none';
+        sidebarToggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+        const status = document.getElementById('sidebarStatus');
+        status.title = collapsed ? 'Offline · Local DB' : '';
+    };
+
     sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-    });
-
-    // Hamburger menu to expand sidebar
-    hamburgerBtn.addEventListener('click', () => {
-        sidebar.classList.remove('collapsed');
-        localStorage.setItem('sidebarCollapsed', 'false');
+        const collapsed = !sidebar.classList.contains('collapsed');
+        localStorage.setItem('sidebarCollapsed', collapsed);
+        applyCollapsedUI(collapsed);
     });
 
     // Restore sidebar state
-    const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-    if (isCollapsed) {
-        sidebar.classList.add('collapsed');
+    applyCollapsedUI(localStorage.getItem('sidebarCollapsed') === 'true');
+}
+
+// Theme Toggle
+function initializeTheme() {
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const moonIcon = document.getElementById('themeIconMoon');
+    const sunIcon = document.getElementById('themeIconSun');
+
+    const applyTheme = (theme) => {
+        if (theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            moonIcon.style.display = '';
+            sunIcon.style.display = 'none';
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            moonIcon.style.display = 'none';
+            sunIcon.style.display = '';
+        }
+    };
+
+    themeToggleBtn.addEventListener('click', () => {
+        const current = localStorage.getItem('dmc-theme') === 'dark' ? 'dark' : 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('dmc-theme', next);
+        applyTheme(next);
+        // Chart colors are resolved to hex at render time — re-render if visible
+        const activeNav = document.querySelector('.nav-item.active');
+        if (activeNav && activeNav.getAttribute('data-page') === 'analytics') {
+            loadAnalytics();
+        }
+    });
+
+    applyTheme(localStorage.getItem('dmc-theme') === 'dark' ? 'dark' : 'light');
+}
+
+// Global per-page search
+function initializeGlobalSearch() {
+    const input = document.getElementById('global-search');
+    input.addEventListener('input', () => {
+        const term = input.value.toLowerCase();
+        const page = document.querySelector('.nav-item.active').getAttribute('data-page');
+        applyGlobalSearch(page, term);
+    });
+}
+
+function applyGlobalSearch(page, term) {
+    switch (page) {
+        case 'current-stock': {
+            const filtered = currentData.currentStock.filter(item =>
+                item.Item_Name.toLowerCase().includes(term) || item.Category.toLowerCase().includes(term));
+            renderPaginatedTable('current-stock', filtered, renderCurrentStockTable, true);
+            break;
+        }
+        case 'items': {
+            const filtered = currentData.items.filter(i =>
+                String(i.Item_ID).includes(term) || i.Item_Name.toLowerCase().includes(term) ||
+                i.Category.toLowerCase().includes(term) || i.Unit_Measure.toLowerCase().includes(term));
+            renderPaginatedTable('items', filtered, renderItemsTable, true);
+            break;
+        }
+        case 'centers': {
+            const filtered = currentData.centers.filter(c =>
+                c.Center_Name.toLowerCase().includes(term) ||
+                (c.GN_Division_Name || '').toLowerCase().includes(term) ||
+                (c.Contact_Person || '').toLowerCase().includes(term));
+            renderPaginatedTable('centers', filtered, renderCentersTable, true);
+            break;
+        }
+        case 'gn-divisions': {
+            const filtered = currentData.gnDivisions.filter(g =>
+                g.GN_Division_Name.toLowerCase().includes(term) || (g.DS_Division || '').toLowerCase().includes(term));
+            renderPaginatedTable('gn-divisions', filtered, renderGNDivisionsTable, true);
+            break;
+        }
+        case 'incoming': {
+            const filtered = currentData.incomingBills.filter(b =>
+                (b.Bill_Number || '').toLowerCase().includes(term) || b.Supplier_Name.toLowerCase().includes(term) ||
+                (b.Remarks || '').toLowerCase().includes(term));
+            renderPaginatedTable('incoming-bills', filtered, renderIncomingBillsTable, true);
+            break;
+        }
+        case 'donations': {
+            const filtered = currentData.donationBills.filter(b =>
+                (b.Bill_Number || '').toLowerCase().includes(term) || b.Donor_Name.toLowerCase().includes(term) ||
+                (b.Remarks || '').toLowerCase().includes(term));
+            renderPaginatedTable('donation-bills', filtered, renderDonationBillsTable, true);
+            break;
+        }
+        case 'outgoing': {
+            const filtered = currentData.outgoingBills.filter(b =>
+                (b.Bill_Number || '').toLowerCase().includes(term) || b.Center_Name.toLowerCase().includes(term) ||
+                b.Officer_Name.toLowerCase().includes(term) || b.Officer_NIC.toLowerCase().includes(term));
+            renderPaginatedTable('outgoing-bills', filtered, renderOutgoingBillsTable, true);
+            break;
+        }
+        default:
+            break;
     }
 }
 
@@ -109,19 +308,25 @@ function switchPage(pageName) {
 
     // Update title
     const titles = {
-        'dashboard': 'Dashboard',
-        'current-stock': 'Current Stock',
-        'incoming': 'Incoming Stock',
-        'donations': 'Donations',
-        'outgoing': 'Dispatch/Outgoing Stock',
-        'care-packages': 'Care Packages',
-        'items': 'Items Master',
-        'centers': 'Centers Master',
-        'gn-divisions': 'GN Divisions',
-        'reports': 'Reports',
-        'settings': 'Settings'
+        'dashboard': { title: 'Dashboard', sub: 'Overview & low-stock alerts' },
+        'current-stock': { title: 'Current Stock', sub: 'Live quantities across all items' },
+        'analytics': { title: 'Analytics', sub: 'Summary cards & stock trends' },
+        'incoming': { title: 'Incoming Stock', sub: 'Goods received notes (GRN)' },
+        'donations': { title: 'Donations', sub: 'Donation bills received' },
+        'outgoing': { title: 'Dispatch / Outgoing', sub: 'Dispatch bills to centers' },
+        'care-packages': { title: 'Care Packages', sub: 'Templates & issued packages' },
+        'items': { title: 'Items Master', sub: 'Item catalogue' },
+        'centers': { title: 'Centers Master', sub: 'Protection centers' },
+        'gn-divisions': { title: 'GN Divisions', sub: 'Grama Niladhari divisions' },
+        'reports': { title: 'Reports', sub: 'Generate PDF & CSV reports' },
+        'settings': { title: 'Settings', sub: 'Backup, restore & about' }
     };
-    document.getElementById('page-title').textContent = titles[pageName];
+    document.getElementById('page-title').textContent = titles[pageName].title;
+    document.getElementById('page-subtitle').textContent = titles[pageName].sub;
+
+    // Reset the global search box on navigation
+    const searchInput = document.getElementById('global-search');
+    if (searchInput) searchInput.value = '';
 
     // Load page data
     loadPageData(pageName);
@@ -134,6 +339,9 @@ function loadPageData(pageName) {
             break;
         case 'current-stock':
             loadCurrentStock();
+            break;
+        case 'analytics':
+            loadAnalytics();
             break;
         case 'incoming':
             loadIncomingStock();
@@ -233,34 +441,41 @@ function initializeEventListeners() {
         if (e.target.id === 'modal') closeModal();
     });
 
-    // Stock search
-    document.getElementById('stock-search').addEventListener('input', filterStockTable);
 }
 
 // Dashboard Functions
 async function loadDashboard() {
     try {
-        const [items, centers, incoming, donations, outgoing, stock, lowStock] = await Promise.all([
+        const [items, centers, incoming, donations, outgoing, stock, lowStock,
+               incomingBills, donationBills, outgoingBills, carePackageIssues] = await Promise.all([
             window.api.items.getActive(),
             window.api.centers.getActive(),
             window.api.incoming.getAll(),
             window.api.donations.getAll(),
             window.api.outgoing.getAll(),
             window.api.stock.getCurrent(),
-            window.api.stock.getLowStock()
+            window.api.stock.getLowStock(),
+            window.api.incoming.bills.getAll(),
+            window.api.donations.bills.getAll(),
+            window.api.outgoing.bills.getAll(),
+            window.api.carePackages.getAllIssues()
         ]);
 
-        currentData = { items, centers, incoming, donations, outgoing, currentStock: stock, lowStock };
+        currentData = {
+            ...currentData, items, centers, incoming, donations, outgoing,
+            currentStock: stock, lowStock, incomingBills, donationBills, outgoingBills, carePackageIssues
+        };
 
         // Update stats
         document.getElementById('total-items').textContent = items.length;
         document.getElementById('low-stock-count').textContent = lowStock.length;
         document.getElementById('total-centers').textContent = centers.length;
-        document.getElementById('total-transactions').textContent = 
+        document.getElementById('total-transactions').textContent =
             incoming.length + donations.length + outgoing.length;
 
         // Update low stock table
         renderLowStockTable(lowStock);
+        renderRecentActivity(buildRecentActivity(incomingBills, donationBills, outgoingBills, carePackageIssues));
     } catch (error) {
         console.error('Error loading dashboard:', error);
         showNotification('Failed to load dashboard data', 'error');
@@ -270,6 +485,8 @@ async function loadDashboard() {
 function renderLowStockTable(data) {
     const tbody = document.querySelector('#low-stock-table tbody');
     tbody.innerHTML = '';
+    const pill = document.getElementById('low-stock-pill');
+    if (pill) pill.textContent = `${data.length} item${data.length !== 1 ? 's' : ''} need attention`;
 
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">No low stock items</td></tr>';
@@ -279,15 +496,353 @@ function renderLowStockTable(data) {
     data.forEach(item => {
         const row = `
             <tr>
-                <td>${escapeHtml(item.Item_Name)}</td>
-                <td>${escapeHtml(item.Category)}</td>
-                <td><strong>${Number(item.Current_Quantity).toFixed(2)}</strong></td>
-                <td>${item.Reorder_Level}</td>
-                <td>${escapeHtml(item.Unit_Measure)}</td>
+                <td class="name-cell">${escapeHtml(item.Item_Name)}</td>
+                <td class="muted-cell">${escapeHtml(item.Category)}</td>
+                <td class="qty-cell" style="color:var(--red)">${Number(item.Current_Quantity).toFixed(2)}</td>
+                <td class="mono-cell" style="text-align:right">${item.Reorder_Level}</td>
+                <td class="muted-cell">${escapeHtml(item.Unit_Measure)}</td>
             </tr>
         `;
         tbody.innerHTML += row;
     });
+}
+
+// Build a merged, recency-sorted activity feed from bills and package issues
+function buildRecentActivity(incomingBills, donationBills, outgoingBills, carePackageIssues) {
+    const events = [];
+    (incomingBills || []).forEach(b => events.push({
+        type: 'in',
+        text: `${b.Bill_Number} received from ${b.Supplier_Name}`,
+        date: b.Created_Date || b.Date_Received
+    }));
+    (donationBills || []).forEach(b => events.push({
+        type: 'gift',
+        text: `Donation ${b.Bill_Number} from ${b.Donor_Name}`,
+        date: b.Created_Date || b.Date_Received
+    }));
+    (outgoingBills || []).forEach(b => events.push({
+        type: 'out',
+        text: `Dispatch ${b.Bill_Number} to ${b.Center_Name} center`,
+        date: b.Created_Date || b.Date_Issued
+    }));
+    (carePackageIssues || []).forEach(i => events.push({
+        type: 'pkg',
+        text: `Care packages issued × ${i.Packages_Issued} (${i.Package_Name})`,
+        date: i.Created_Date || i.Date_Issued
+    }));
+    events.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return events.slice(0, 5);
+}
+
+function activityIcon(type) {
+    const icons = {
+        in: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><path d="M19 21H5"/></svg>',
+        out: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h1"/><path d="M14 9h4l4 4v4a1 1 0 0 1-1 1h-1"/><circle cx="7" cy="18" r="2"/><path d="M10 18h4"/><circle cx="18" cy="18" r="2"/></svg>',
+        gift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/></svg>',
+        pkg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 4 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4"/></svg>'
+    };
+    return icons[type] || icons.in;
+}
+
+function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const diffMs = Date.now() - d.getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins} min ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return `${days} days ago`;
+    return d.toLocaleDateString('en-GB');
+}
+
+function renderRecentActivity(events) {
+    const el = document.getElementById('recent-activity-list');
+    if (!el) return;
+    if (!events.length) {
+        el.innerHTML = '<div class="empty-hint">No recent activity</div>';
+        return;
+    }
+    el.innerHTML = events.map(a => `
+        <div class="activity-row">
+            <span class="activity-icon ${a.type}">${activityIcon(a.type)}</span>
+            <div class="activity-text">
+                <div class="txt">${escapeHtml(a.text)}</div>
+                <div class="time">${timeAgo(a.date)}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ==================== Analytics ====================
+
+const CHART_COLOR_VARS = ['--cat-1', '--cat-2', '--cat-3', '--cat-4', '--cat-5', '--cat-6', '--cat-7', '--cat-8'];
+
+function chartColor(index) {
+    const varName = CHART_COLOR_VARS[index % CHART_COLOR_VARS.length];
+    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+function formatCompactNumber(n) {
+    n = Number(n) || 0;
+    const abs = Math.abs(n);
+    if (abs >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (abs >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+
+// Round an axis max up to a clean step (1 / 2 / 5 x 10^n)
+function niceMax(value) {
+    if (value <= 0) return 10;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+    const residual = value / magnitude;
+    let niceResidual;
+    if (residual > 5) niceResidual = 10;
+    else if (residual > 2) niceResidual = 5;
+    else if (residual > 1) niceResidual = 2;
+    else niceResidual = 1;
+    return niceResidual * magnitude;
+}
+
+function truncateLabel(str, max) {
+    str = String(str || '');
+    return str.length > max ? str.slice(0, max - 1) + '…' : str;
+}
+
+let chartTooltipEl = null;
+function getChartTooltip() {
+    if (!chartTooltipEl) chartTooltipEl = document.getElementById('chart-tooltip');
+    return chartTooltipEl;
+}
+
+function showChartTooltip(evt, labelHtml, valueHtml) {
+    const tip = getChartTooltip();
+    if (!tip) return;
+    tip.innerHTML = `<span class="tt-label">${labelHtml}</span><span class="tt-value">${valueHtml}</span>`;
+    tip.classList.add('show');
+    moveChartTooltip(evt);
+}
+
+function moveChartTooltip(evt) {
+    const tip = getChartTooltip();
+    if (!tip || !tip.classList.contains('show')) return;
+    const x = evt.clientX, y = evt.clientY;
+    const w = tip.offsetWidth || 120;
+    tip.style.left = Math.min(x + 14, window.innerWidth - w - 12) + 'px';
+    tip.style.top = Math.max(y - 36, 8) + 'px';
+}
+
+function hideChartTooltip() {
+    const tip = getChartTooltip();
+    if (tip) tip.classList.remove('show');
+}
+
+// Horizontal bar chart. data = [{label, value, color?}]
+function renderHBarChart(containerId, data, opts = {}) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!data.length) {
+        el.innerHTML = '<div class="chart-empty">No data yet</div>';
+        return;
+    }
+
+    const w = 480;
+    const barH = 20;
+    const gap = 13;
+    const leftPad = opts.leftPad || 120;
+    const rightPad = 44;
+    const topPad = 4;
+    const max = niceMax(Math.max(...data.map(d => d.value), 1));
+    const plotW = w - leftPad - rightPad;
+    const h = topPad * 2 + data.length * (barH + gap) - gap + 18;
+
+    const gridTicks = 4;
+    let gridSvg = '';
+    for (let i = 0; i <= gridTicks; i++) {
+        const gx = leftPad + (plotW * i) / gridTicks;
+        const val = (max * i) / gridTicks;
+        gridSvg += `<line class="chart-gridline" x1="${gx}" y1="${topPad}" x2="${gx}" y2="${h - 16}"/>`;
+        gridSvg += `<text class="chart-axis-label" x="${gx}" y="${h - 4}" font-size="9.5" text-anchor="middle">${formatCompactNumber(val)}</text>`;
+    }
+
+    let bars = '';
+    data.forEach((d, i) => {
+        const y = topPad + i * (barH + gap);
+        const bw = Math.max((d.value / max) * plotW, 2);
+        const color = d.color || chartColor(i);
+        const fullLabel = escapeHtml(String(d.label));
+        const shortLabel = escapeHtml(truncateLabel(d.label, Math.floor(leftPad / 7)));
+        const valueText = formatCompactNumber(d.value);
+        bars += `
+            <text class="chart-axis-label" x="${leftPad - 10}" y="${y + barH / 2 + 4}" font-size="11.5" text-anchor="end">${shortLabel}</text>
+            <rect class="chart-bar" data-label="${fullLabel}" data-value="${valueText}"
+                x="${leftPad}" y="${y}" width="${bw}" height="${barH}" rx="4" fill="${color}"></rect>
+            <text class="chart-value-label" x="${leftPad + bw + 8}" y="${y + barH / 2 + 4}" font-size="11">${valueText}</text>
+        `;
+    });
+
+    el.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet">${gridSvg}${bars}</svg>`;
+    el.querySelectorAll('.chart-bar').forEach(bar => {
+        bar.addEventListener('mousemove', (e) => showChartTooltip(e, bar.dataset.label, bar.dataset.value));
+        bar.addEventListener('mouseleave', hideChartTooltip);
+    });
+}
+
+// Multi-series line chart. months = ['Jan', ...]; series = [{name, color, values:[...]}]
+function renderTrendChart(containerId, months, series) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const allValues = series.flatMap(s => s.values);
+    if (!allValues.some(v => v > 0)) {
+        el.innerHTML = '<div class="chart-empty">No data yet</div>';
+        return;
+    }
+
+    const w = 480, h = 200, leftPad = 38, rightPad = 12, topPad = 12, bottomPad = 24;
+    const plotW = w - leftPad - rightPad;
+    const plotH = h - topPad - bottomPad;
+    const max = niceMax(Math.max(...allValues, 1));
+    const n = months.length;
+    const stepX = n > 1 ? plotW / (n - 1) : 0;
+    const yFor = v => topPad + plotH - (v / max) * plotH;
+    const xFor = i => leftPad + i * stepX;
+
+    let gridSvg = '';
+    const ticks = 4;
+    for (let i = 0; i <= ticks; i++) {
+        const val = (max * i) / ticks;
+        const gy = yFor(val);
+        gridSvg += `<line class="chart-gridline" x1="${leftPad}" y1="${gy}" x2="${w - rightPad}" y2="${gy}"/>`;
+        gridSvg += `<text class="chart-axis-label" x="${leftPad - 8}" y="${gy + 3}" font-size="9" text-anchor="end">${formatCompactNumber(val)}</text>`;
+    }
+    let xLabels = '';
+    months.forEach((m, i) => {
+        xLabels += `<text class="chart-axis-label" x="${xFor(i)}" y="${h - 6}" font-size="10" text-anchor="middle">${escapeHtml(m)}</text>`;
+    });
+
+    let linesSvg = '';
+    series.forEach(s => {
+        const points = s.values.map((v, i) => `${xFor(i)},${yFor(v)}`).join(' ');
+        const areaPoints = `${xFor(0)},${yFor(0)} ${points} ${xFor(n - 1)},${yFor(0)}`;
+        linesSvg += `<polygon class="chart-area" points="${areaPoints}" fill="${s.color}"></polygon>`;
+        linesSvg += `<polyline class="chart-line" points="${points}" stroke="${s.color}"></polyline>`;
+        s.values.forEach((v, i) => {
+            linesSvg += `<circle class="chart-dot" data-series="${escapeHtml(s.name)}" data-label="${escapeHtml(months[i])}" data-value="${formatCompactNumber(v)}" cx="${xFor(i)}" cy="${yFor(v)}" r="4" fill="${s.color}"></circle>`;
+        });
+    });
+
+    const legend = series.map(s =>
+        `<span class="chart-legend-item"><span class="chart-legend-line" style="background:${s.color}"></span>${escapeHtml(s.name)}</span>`
+    ).join('');
+
+    el.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet">${gridSvg}${linesSvg}${xLabels}</svg>` +
+        `<div class="chart-legend">${legend}</div>`;
+
+    el.querySelectorAll('.chart-dot').forEach(dot => {
+        dot.addEventListener('mousemove', (e) => showChartTooltip(e, `${dot.dataset.series} · ${dot.dataset.label}`, dot.dataset.value));
+        dot.addEventListener('mouseleave', hideChartTooltip);
+    });
+}
+
+function sumBillQty(bills) {
+    return (bills || []).reduce((a, b) => a + (Number(b.Total_Quantity) || 0), 0);
+}
+
+function lastNMonths(n) {
+    const out = [];
+    const now = new Date();
+    for (let i = n - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        out.push({ year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('en-US', { month: 'short' }) });
+    }
+    return out;
+}
+
+function bucketByMonth(bills, months, dateField) {
+    const totals = months.map(() => 0);
+    (bills || []).forEach(b => {
+        const raw = b[dateField];
+        if (!raw) return;
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return;
+        const idx = months.findIndex(m => m.year === d.getFullYear() && m.month === d.getMonth());
+        if (idx !== -1) totals[idx] += Number(b.Total_Quantity) || 0;
+    });
+    return totals;
+}
+
+async function loadAnalytics() {
+    try {
+        const [stock, incomingBills, donationBills, outgoingBills] = await Promise.all([
+            window.api.stock.getCurrent(),
+            window.api.incoming.bills.getAll(),
+            window.api.donations.bills.getAll(),
+            window.api.outgoing.bills.getAll()
+        ]);
+        currentData.currentStock = stock;
+        currentData.incomingBills = incomingBills;
+        currentData.donationBills = donationBills;
+        currentData.outgoingBills = outgoingBills;
+
+        // Summary cards
+        const totalStock = stock.reduce((a, i) => a + Math.max(Number(i.Current_Quantity) || 0, 0), 0);
+        const categories = new Set(stock.map(i => i.Category)).size;
+        const totalReceived = sumBillQty(incomingBills) + sumBillQty(donationBills);
+        const totalDispatched = sumBillQty(outgoingBills);
+        document.getElementById('an-total-stock').textContent = formatCompactNumber(totalStock);
+        document.getElementById('an-categories').textContent = categories;
+        document.getElementById('an-total-received').textContent = formatCompactNumber(totalReceived);
+        document.getElementById('an-total-dispatched').textContent = formatCompactNumber(totalDispatched);
+
+        // Stock by Category
+        const byCategory = {};
+        stock.forEach(i => {
+            const cat = i.Category || 'Uncategorized';
+            byCategory[cat] = (byCategory[cat] || 0) + Math.max(Number(i.Current_Quantity) || 0, 0);
+        });
+        const categoryData = Object.entries(byCategory)
+            .map(([label, value]) => ({ label, value }))
+            .sort((a, b) => b.value - a.value);
+        renderHBarChart('chart-category', categoryData, { leftPad: 110 });
+
+        // Top Items by Movement (incoming + outgoing quantity)
+        const topItems = stock
+            .map(i => ({ label: i.Item_Name, value: (Number(i.Total_Incoming) || 0) + (Number(i.Total_Outgoing) || 0) }))
+            .filter(i => i.value > 0)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 8);
+        renderHBarChart('chart-top-items', topItems, { leftPad: 130 });
+
+        // Dispatch by Center
+        const byCenter = {};
+        (outgoingBills || []).forEach(b => {
+            const c = b.Center_Name || 'Unknown';
+            byCenter[c] = (byCenter[c] || 0) + (Number(b.Total_Quantity) || 0);
+        });
+        const centerData = Object.entries(byCenter)
+            .map(([label, value]) => ({ label, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 8);
+        renderHBarChart('chart-centers', centerData, { leftPad: 150 });
+
+        // Incoming vs Donations vs Outgoing — last 6 months
+        const months = lastNMonths(6);
+        const incomingSeries = bucketByMonth(incomingBills, months, 'Date_Received');
+        const donationSeries = bucketByMonth(donationBills, months, 'Date_Received');
+        const outgoingSeries = bucketByMonth(outgoingBills, months, 'Date_Issued');
+        renderTrendChart('chart-trend', months.map(m => m.label), [
+            { name: 'Incoming', color: chartColor(1), values: incomingSeries },
+            { name: 'Donations', color: chartColor(6), values: donationSeries },
+            { name: 'Outgoing', color: chartColor(0), values: outgoingSeries }
+        ]);
+    } catch (error) {
+        console.error('Error loading analytics:', error);
+        showNotification('Failed to load analytics', 'error');
+    }
 }
 
 // Current Stock Functions
@@ -295,7 +850,7 @@ async function loadCurrentStock() {
     try {
         const stock = await window.api.stock.getCurrent();
         currentData.currentStock = stock;
-        renderCurrentStockTable(stock);
+        renderPaginatedTable('current-stock', stock, renderCurrentStockTable, true);
     } catch (error) {
         console.error('Error loading current stock:', error);
         showNotification('Failed to load current stock', 'error');
@@ -315,36 +870,28 @@ function renderCurrentStockTable(data) {
         const statusClass = item.Stock_Status === 'Low Stock' ? 'status-low' : 'status-ok';
         const row = `
             <tr>
-                <td>${item.Item_ID}</td>
-                <td>${escapeHtml(item.Item_Name)}</td>
-                <td>${escapeHtml(item.Category)}</td>
-                <td><strong>${Number(item.Current_Quantity).toFixed(2)}</strong></td>
-                <td>${escapeHtml(item.Unit_Measure)}</td>
-                <td>${item.Total_Incoming || 0}</td>
-                <td>${item.Total_Outgoing || 0}</td>
-                <td>${item.Reorder_Level}</td>
-                <td><span class="status-badge ${statusClass}">${item.Stock_Status}</span></td>
+                <td class="mono-cell">${item.Item_ID}</td>
+                <td class="name-cell">${escapeHtml(item.Item_Name)}</td>
+                <td class="muted-cell">${escapeHtml(item.Category)}</td>
+                <td class="qty-cell">${Number(item.Current_Quantity).toFixed(2)}</td>
+                <td class="muted-cell">${escapeHtml(item.Unit_Measure)}</td>
+                <td class="mono-cell" style="text-align:right;color:var(--green)">${item.Total_Incoming || 0}</td>
+                <td class="mono-cell" style="text-align:right">${item.Total_Outgoing || 0}</td>
+                <td class="mono-cell" style="text-align:right">${item.Reorder_Level}</td>
+                <td>${statusBadge(item.Stock_Status, statusClass)}</td>
             </tr>
         `;
         tbody.innerHTML += row;
     });
 }
 
-function filterStockTable() {
-    const searchTerm = document.getElementById('stock-search').value.toLowerCase();
-    const filtered = currentData.currentStock.filter(item =>
-        item.Item_Name.toLowerCase().includes(searchTerm) ||
-        item.Category.toLowerCase().includes(searchTerm)
-    );
-    renderCurrentStockTable(filtered);
-}
 
 // Items Functions
 async function loadItems() {
     try {
         const items = await window.api.items.getAll();
         currentData.items = items;
-        renderItemsTable(items);
+        renderPaginatedTable('items', items, renderItemsTable, true);
     } catch (error) {
         console.error('Error loading items:', error);
         showNotification('Failed to load items', 'error');
@@ -364,17 +911,16 @@ function renderItemsTable(data) {
         const statusClass = item.Status === 'Active' ? 'status-active' : 'status-inactive';
         const row = `
             <tr>
-                <td>${item.Item_ID}</td>
-                <td>${escapeHtml(item.Item_Name)}</td>
-                <td>${escapeHtml(item.Unit_Measure)}</td>
-                <td>${escapeHtml(item.Category)}</td>
-                <td>${item.Reorder_Level}</td>
-                <td><span class="status-badge ${statusClass}">${item.Status}</span></td>
-                <td>
-                    <button class="btn btn-small btn-secondary" onclick="editItem(${item.Item_ID})">Edit</button>
-                    ${item.Status === 'Active' ? 
-                        `<button class="btn btn-small btn-danger" onclick="deleteItem(${item.Item_ID})">Delete</button>` : ''}
-                </td>
+                <td class="mono-cell">${item.Item_ID}</td>
+                <td class="name-cell">${escapeHtml(item.Item_Name)}</td>
+                <td class="muted-cell">${escapeHtml(item.Unit_Measure)}</td>
+                <td><span class="chip">${escapeHtml(item.Category)}</span></td>
+                <td class="mono-cell" style="text-align:right">${item.Reorder_Level}</td>
+                <td>${statusBadge(item.Status, statusClass)}</td>
+                <td class="actions"><div class="actions-row">
+                    ${actionBtn('btn-edit', 'Edit', `editItem(${item.Item_ID})`, ICONS.edit)}
+                    ${item.Status === 'Active' ? actionBtn('btn-delete', 'Delete', `deleteItem(${item.Item_ID})`, ICONS.delete) : ''}
+                </div></td>
             </tr>
         `;
         tbody.innerHTML += row;
@@ -493,7 +1039,7 @@ async function loadCenters() {
     try {
         const centers = await window.api.centers.getAll();
         currentData.centers = centers;
-        renderCentersTable(centers);
+        renderPaginatedTable('centers', centers, renderCentersTable, true);
     } catch (error) {
         console.error('Error loading centers:', error);
         showNotification('Failed to load centers', 'error');
@@ -513,17 +1059,16 @@ function renderCentersTable(data) {
         const statusClass = center.Status === 'Active' ? 'status-active' : 'status-inactive';
         const row = `
             <tr>
-                <td>${center.Center_ID}</td>
-                <td>${escapeHtml(center.Center_Name)}</td>
-                <td>${escapeHtml(center.GN_Division_Name || '-')}</td>
+                <td class="mono-cell">${center.Center_ID}</td>
+                <td class="name-cell">${escapeHtml(center.Center_Name)}</td>
+                <td class="muted-cell">${escapeHtml(center.GN_Division_Name || '-')}</td>
                 <td>${escapeHtml(center.Contact_Person || '-')}</td>
-                <td>${escapeHtml(center.Contact_Phone || '-')}</td>
-                <td><span class="status-badge ${statusClass}">${center.Status}</span></td>
-                <td>
-                    <button class="btn btn-small btn-secondary" onclick="editCenter(${center.Center_ID})">Edit</button>
-                    ${center.Status === 'Active' ? 
-                        `<button class="btn btn-small btn-danger" onclick="deleteCenter(${center.Center_ID})">Delete</button>` : ''}
-                </td>
+                <td class="mono-cell">${escapeHtml(center.Contact_Phone || '-')}</td>
+                <td>${statusBadge(center.Status, statusClass)}</td>
+                <td class="actions"><div class="actions-row">
+                    ${actionBtn('btn-edit', 'Edit', `editCenter(${center.Center_ID})`, ICONS.edit)}
+                    ${center.Status === 'Active' ? actionBtn('btn-delete', 'Delete', `deleteCenter(${center.Center_ID})`, ICONS.delete) : ''}
+                </div></td>
             </tr>
         `;
         tbody.innerHTML += row;
@@ -649,220 +1194,9 @@ async function deleteCenter(centerId) {
     });
 }
 
-// Incoming Stock Functions
-// ==================== INCOMING STOCK BILLS ====================
-
-async function loadIncomingStock() {
-    try {
-        const bills = await window.api.incoming.bills.getAll();
-        currentData.incomingBills = bills;
-        renderIncomingBillsTable(bills);
-    } catch (error) {
-        console.error('Error loading incoming bills:', error);
-        showNotification('Failed to load incoming bills', 'error');
-    }
-}
-
-function renderIncomingBillsTable(data) {
-    const tbody = document.querySelector('#incoming-bills-table tbody');
-    tbody.innerHTML = '';
-
-    if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No incoming bills found</td></tr>';
-        return;
-    }
-
-    data.forEach(bill => {
-        const row = `
-            <tr>
-                <td><strong>${escapeHtml(bill.Bill_Number || 'N/A')}</strong></td>
-                <td>${formatDate(bill.Date_Received)}</td>
-                <td>${escapeHtml(bill.Supplier_Name)}</td>
-                <td><span class="badge">${bill.Item_Count || 0} items</span></td>
-                <td><strong>${bill.Total_Quantity || 0}</strong></td>
-                <td>${escapeHtml(bill.Remarks || '-')}</td>
-                <td class="actions">
-                    <button class="btn-icon btn-view" onclick="viewIncomingBillDetails(${bill.Bill_ID})" title="View">👁️</button>
-                    <button class="btn-icon btn-edit" onclick="showEditIncomingBillModal(${bill.Bill_ID})" title="Edit">✏️</button>
-                    <button class="btn-icon btn-delete" onclick="deleteIncomingBill(${bill.Bill_ID})" title="Delete">🗑️</button>
-                </td>
-            </tr>
-        `;
-        tbody.innerHTML += row;
-    });
-}
-
-async function showAddIncomingModal() {
-    const modalBody = `
-        <form id="incomingForm">
-            <div class="form-group">
-                <label>Date Received *</label>
-                <input type="date" id="dateReceived" value="${getCurrentDate()}" required>
-            </div>
-            <div class="form-group">
-                <label>Item *</label>
-                <div id="itemIdContainer"><div class="loading-indicator">Loading items...</div></div>
-            </div>
-            <div class="form-group">
-                <label>Supplier Name *</label>
-                <input type="text" id="supplierName" required>
-            </div>
-            <div class="form-group">
-                <label>Quantity Received *</label>
-                <input type="number" id="qtyReceived" min="1" required>
-            </div>
-            <div class="form-group">
-                <label>Remarks</label>
-                <textarea id="remarks"></textarea>
-            </div>
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Add Record</button>
-            </div>
-        </form>
-    `;
-
-    showModal('Add Incoming Stock', modalBody);
-
-    // Load items asynchronously without blocking UI
-    try {
-        if (currentData.items.length === 0) {
-            currentData.items = await window.api.items.getActive();
-        }
-        
-        const itemOptions = currentData.items
-            .filter(i => i.Status === 'Active')
-            .map(i => ({ 
-                value: i.Item_ID.toString(), 
-                text: `${i.Item_Name} (${i.Unit_Measure})` 
-            }));
-
-        const itemSelect = new SearchableSelect('itemIdContainer', itemOptions, 'Search items...');
-        window.currentItemSelect = itemSelect;
-    } catch (error) {
-        console.error('Error loading items:', error);
-        document.getElementById('itemIdContainer').innerHTML = '<div class="error-message">Failed to load items</div>';
-    }
-
-    // Add form submit handler immediately
-    document.getElementById('incomingForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const itemId = window.currentItemSelect ? window.currentItemSelect.getValue() : '';
-        if (!itemId) {
-            showNotification('Please select an item', 'error');
-            return;
-        }
-        try {
-            await window.api.incoming.add({
-                Date_Received: document.getElementById('dateReceived').value,
-                Item_ID: parseInt(itemId),
-                Supplier_Name: document.getElementById('supplierName').value,
-                Qty_Received: parseInt(document.getElementById('qtyReceived').value),
-                Remarks: document.getElementById('remarks').value || null
-            });
-            closeModal();
-            loadIncomingStock();
-            showNotification('Incoming stock added successfully', 'success');
-        } catch (error) {
-            showNotification('Failed to add incoming stock: ' + error.message, 'error');
-        }
-    });
-}
-
-async function showEditIncomingModal(grnId) {
-    const stock = currentData.incoming.find(s => s.GRN_ID === grnId);
-    if (!stock) {
-        showNotification('Record not found', 'error');
-        return;
-    }
-
-    const modalBody = `
-        <form id="editIncomingForm">
-            <div class="form-group">
-                <label>Date Received *</label>
-                <input type="date" id="dateReceived" value="${stock.Date_Received.split('T')[0]}" required>
-            </div>
-            <div class="form-group">
-                <label>Item *</label>
-                <div id="itemIdContainer"></div>
-            </div>
-            <div class="form-group">
-                <label>Supplier Name *</label>
-                <input type="text" id="supplierName" value="${escapeHtml(stock.Supplier_Name)}" required>
-            </div>
-            <div class="form-group">
-                <label>Quantity Received *</label>
-                <input type="number" id="qtyReceived" value="${stock.Qty_Received}" min="1" required>
-            </div>
-            <div class="form-group">
-                <label>Remarks</label>
-                <textarea id="remarks">${escapeHtml(stock.Remarks || '')}</textarea>
-            </div>
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Update Record</button>
-            </div>
-        </form>
-    `;
-
-    showModal('Edit Incoming Stock', modalBody);
-
-    // Load all items for editing (not just active ones)
-    try {
-        const items = await window.api.items.getAll();
-        const itemOptions = items.map(i => ({ 
-            value: i.Item_ID.toString(), 
-            text: `${i.Item_Name} (${i.Unit_Measure})${i.Status === 'Inactive' ? ' [Inactive]' : ''}` 
-        }));
-
-        const itemSelect = new SearchableSelect('itemIdContainer', itemOptions, 'Search items...');
-        itemSelect.setValue(stock.Item_ID.toString());
-        window.currentItemSelect = itemSelect;
-    } catch (error) {
-        console.error('Error loading items:', error);
-    }
-
-    document.getElementById('editIncomingForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const itemId = window.currentItemSelect ? window.currentItemSelect.getValue() : '';
-        if (!itemId) {
-            showNotification('Please select an item', 'error');
-            return;
-        }
-        try {
-            await window.api.incoming.update(grnId, {
-                Date_Received: document.getElementById('dateReceived').value,
-                Item_ID: parseInt(itemId),
-                Supplier_Name: document.getElementById('supplierName').value,
-                Qty_Received: parseInt(document.getElementById('qtyReceived').value),
-                Remarks: document.getElementById('remarks').value || null
-            });
-            closeModal();
-            loadIncomingStock();
-            showNotification('Incoming stock updated successfully', 'success');
-        } catch (error) {
-            showNotification('Failed to update incoming stock: ' + error.message, 'error');
-        }
-    });
-}
-
-async function deleteIncomingStock(grnId) {
-    showConfirm('Are you sure you want to delete this incoming stock record?', async () => {
-        try {
-            await window.api.incoming.delete(grnId);
-            loadIncomingStock();
-            showNotification('Incoming stock deleted successfully', 'success');
-        } catch (error) {
-            showNotification('Failed to delete incoming stock: ' + error.message, 'error');
-        }
-    });
-}
-
-// ==================== DONATIONS & OUTGOING - Handled by bill-functions.js ====================
-// All donation and outgoing stock functions are now in bill-functions.js
-// This includes:
-// - loadDonations(), loadOutgoingStock()
-// - All modal and CRUD operations for donations and outgoing bills
+// ==================== INCOMING / DONATIONS / OUTGOING - Handled by bill-functions.js ====================
+// All bill-based CRUD (load*, render*Table, add/edit/delete modals) for incoming, donation
+// and outgoing bills lives in bill-functions.js.
 
 // Database Import/Export
 async function exportDatabase() {
@@ -1538,7 +1872,7 @@ async function loadGNDivisions() {
     try {
         const gnDivisions = await window.api.gnDivisions.getAll();
         currentData.gnDivisions = gnDivisions;
-        renderGNDivisionsTable(gnDivisions);
+        renderPaginatedTable('gn-divisions', gnDivisions, renderGNDivisionsTable, true);
     } catch (error) {
         console.error('Error loading GN divisions:', error);
         showNotification('Failed to load GN divisions', 'error');
@@ -1558,15 +1892,14 @@ function renderGNDivisionsTable(data) {
         const statusClass = gn.Status === 'Active' ? 'status-active' : 'status-inactive';
         const row = `
             <tr>
-                <td>${gn.GN_ID}</td>
-                <td>${escapeHtml(gn.GN_Division_Name)}</td>
-                <td>${escapeHtml(gn.DS_Division || '-')}</td>
-                <td><span class="status-badge ${statusClass}">${gn.Status}</span></td>
-                <td>
-                    <button class="btn btn-small btn-secondary" onclick="editGNDivision(${gn.GN_ID})">Edit</button>
-                    ${gn.Status === 'Active' ? 
-                        `<button class="btn btn-small btn-danger" onclick="deleteGNDivision(${gn.GN_ID})">Delete</button>` : ''}
-                </td>
+                <td class="mono-cell">${gn.GN_ID}</td>
+                <td class="name-cell">${escapeHtml(gn.GN_Division_Name)}</td>
+                <td class="muted-cell">${escapeHtml(gn.DS_Division || '-')}</td>
+                <td>${statusBadge(gn.Status, statusClass)}</td>
+                <td class="actions"><div class="actions-row">
+                    ${actionBtn('btn-edit', 'Edit', `editGNDivision(${gn.GN_ID})`, ICONS.edit)}
+                    ${gn.Status === 'Active' ? actionBtn('btn-delete', 'Delete', `deleteGNDivision(${gn.GN_ID})`, ICONS.delete) : ''}
+                </div></td>
             </tr>
         `;
         tbody.innerHTML += row;
@@ -1678,8 +2011,8 @@ async function loadCarePackages() {
         ]);
         currentData.carePackageTemplates = templates;
         currentData.carePackageIssues = issues;
-        renderCarePackageTemplatesTable(templates);
-        renderCarePackageIssuesTable(issues);
+        renderPaginatedTable('care-package-templates', templates, renderCarePackageTemplatesTable, true);
+        renderPaginatedTable('care-package-issues', issues, renderCarePackageIssuesTable, true);
     } catch (error) {
         console.error('Error loading care packages:', error);
         showNotification('Failed to load care packages', 'error');
@@ -1714,17 +2047,16 @@ function renderCarePackageTemplatesTable(data) {
         const statusClass = template.Status === 'Active' ? 'status-active' : 'status-inactive';
         const row = `
             <tr>
-                <td>${template.Template_ID}</td>
-                <td>${escapeHtml(template.Package_Name)}</td>
-                <td>${escapeHtml(template.Description || '-')}</td>
-                <td>${itemsCount.length}</td>
-                <td><span class="status-badge ${statusClass}">${template.Status}</span></td>
-                <td>
-                    <button class="btn btn-small btn-secondary" onclick="viewCarePackageTemplate(${template.Template_ID})">View</button>
-                    <button class="btn btn-small btn-secondary" onclick="editCarePackageTemplate(${template.Template_ID})">Edit</button>
-                    ${template.Status === 'Active' ? 
-                        `<button class="btn btn-small btn-danger" onclick="deleteCarePackageTemplate(${template.Template_ID})">Delete</button>` : ''}
-                </td>
+                <td class="mono-cell">${template.Template_ID}</td>
+                <td class="name-cell">${escapeHtml(template.Package_Name)}</td>
+                <td class="muted-cell">${escapeHtml(template.Description || '-')}</td>
+                <td class="qty-cell">${itemsCount.length}</td>
+                <td>${statusBadge(template.Status, statusClass)}</td>
+                <td class="actions"><div class="actions-row">
+                    ${actionBtn('btn-view', 'View', `viewCarePackageTemplate(${template.Template_ID})`, ICONS.view)}
+                    ${actionBtn('btn-edit', 'Edit', `editCarePackageTemplate(${template.Template_ID})`, ICONS.edit)}
+                    ${template.Status === 'Active' ? actionBtn('btn-delete', 'Delete', `deleteCarePackageTemplate(${template.Template_ID})`, ICONS.delete) : ''}
+                </div></td>
             </tr>
         `;
         tbody.innerHTML += row;
@@ -1744,20 +2076,20 @@ function renderCarePackageIssuesTable(data) {
         const recipient = issue.Recipient_Type === 'Center' ? issue.Center_Name : issue.GN_Division_Name;
         const row = `
             <tr>
-                <td>${issue.Issue_ID}</td>
-                <td>${issue.Date_Issued}</td>
-                <td>${escapeHtml(issue.Package_Name)}</td>
-                <td>${issue.Packages_Issued}</td>
-                <td>${issue.Recipient_Type}</td>
+                <td class="mono-cell">${issue.Issue_ID}</td>
+                <td class="mono-cell" style="color:var(--ink-4)">${issue.Date_Issued}</td>
+                <td class="name-cell">${escapeHtml(issue.Package_Name)}</td>
+                <td class="qty-cell">${issue.Packages_Issued}</td>
+                <td class="muted-cell">${issue.Recipient_Type}</td>
                 <td>${escapeHtml(recipient)}</td>
                 <td>${escapeHtml(issue.Officer_Name)}</td>
-                <td>${escapeHtml(issue.Officer_NIC)}</td>
-                <td>${escapeHtml(issue.Remarks || '-')}</td>
-                <td>
-                    <button class="btn btn-small btn-secondary" onclick="viewCarePackageIssue(${issue.Issue_ID})">View</button>
-                    <button class="btn btn-small btn-secondary" onclick="editCarePackageIssue(${issue.Issue_ID})">Edit</button>
-                    <button class="btn btn-small btn-danger" onclick="deleteCarePackageIssue(${issue.Issue_ID})">Delete</button>
-                </td>
+                <td class="mono-cell">${escapeHtml(issue.Officer_NIC)}</td>
+                <td class="muted-cell">${escapeHtml(issue.Remarks || '-')}</td>
+                <td class="actions"><div class="actions-row">
+                    ${actionBtn('btn-view', 'View', `viewCarePackageIssue(${issue.Issue_ID})`, ICONS.view)}
+                    ${actionBtn('btn-edit', 'Edit', `editCarePackageIssue(${issue.Issue_ID})`, ICONS.edit)}
+                    ${actionBtn('btn-delete', 'Delete', `deleteCarePackageIssue(${issue.Issue_ID})`, ICONS.delete)}
+                </div></td>
             </tr>
         `;
         tbody.innerHTML += row;
@@ -1916,7 +2248,7 @@ async function editCarePackageTemplate(templateId) {
                 <input type="text" value="${escapeHtml(item.Item_Name)}" readonly class="form-control" style="flex:2;">
                 <input type="number" value="${item.Quantity_Per_Package}" class="form-control item-qty" style="flex:1;" min="0.01" step="0.01" required>
                 <input type="text" value="${escapeHtml(item.Item_Remarks || '')}" class="form-control item-remarks" style="flex:2;" placeholder="Remarks">
-                <button type="button" class="btn btn-danger btn-small" onclick="removeTemplateItem(${item.Template_Item_ID})">✕</button>
+                <button type="button" class="btn-remove-item" onclick="removeTemplateItem(${item.Template_Item_ID})">${ICONS.remove}</button>
             </div>
         `;
     });
@@ -1939,7 +2271,7 @@ async function editCarePackageTemplate(templateId) {
                     <div id="addItemContainer" style="flex:2;"></div>
                     <input type="number" id="addItemQty" class="form-control" placeholder="Qty" style="flex:1;" min="0.01" step="0.01">
                     <input type="text" id="addItemRemarks" class="form-control" placeholder="Remarks" style="flex:2;">
-                    <button type="button" class="btn btn-secondary" onclick="addTemplateItemRow(${templateId})">➕ Add</button>
+                    <button type="button" class="btn btn-secondary" onclick="addTemplateItemRow(${templateId})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>Add</button>
                 </div>
             </div>
             ${itemsHtml}
